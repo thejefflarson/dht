@@ -11,8 +11,9 @@ typedef struct {
 
 typedef struct {
   void *user_data;
-  void (*callback)(char *resp, int size, void *user_data);
+  void (*callback)(dht_baton_t* baton);
   dht_op_t op;
+  char[160] node_id;
   char *data;
   size_t size;
 } dht_baton_t;
