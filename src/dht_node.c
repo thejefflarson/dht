@@ -4,7 +4,7 @@
 #include "dht_util.h"
 
 dht_node_t *
-dht_node_new(char[160] id) {
+dht_node_new(char[32] id) {
   dht_node_t* node = (dht_node_t*) malloc(sizeof(dht_node_t));
 
   if(node == NULL)
