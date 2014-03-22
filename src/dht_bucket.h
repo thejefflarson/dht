@@ -1,18 +1,19 @@
 #ifndef DHT_BUCKET_H_
 #define DHT_BUCKET_H_
 
+#include "dht_node.h"
+
 typedef struct dht_bucket_t {
   dht_node_t[8] nodes;
   int length;
   char[160] upper;
-  char[160] mid;
   char[160] lower;
   dht_bucket_t *lower;
   dht_bucket_t *upper;
 } dht_bucket_t;
 
 dht_bucket_t*
-dht_bucket_new();
+dht_bucket_new(char *upper, char *lower);
 
 dht_bucket_t*
 dht_bucket_insert(dht_bucket_t *root, dht_node_t *node);

@@ -1,3 +1,6 @@
+#include <stdlib.h>
+#include "dht_bucket.h"
+
 dht_bucket_t*
 dht_bucket_new() {
   dht_bucket_t* bucket;
