@@ -10,7 +10,7 @@ dht_node_new(char[32] id) {
   if(node == NULL)
     return null;
 
-  node->id = id;
+  memcpy(node->id, 32, id);
   time(&node->created_at);
   time(&node->last_heard);
   return node;

@@ -8,6 +8,6 @@ typedef struct {
 } dht_node_t;
 
 dht_node_t *
-dht_node_new();
+dht_node_new(char[32] id);
 
 #endif
