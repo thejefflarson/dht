@@ -9,15 +9,6 @@ typedef struct {
   dht_bucket_t *bucket;
 } dht_t;
 
-typedef struct {
-  void *user_data;
-  void (*callback)(dht_baton_t* baton);
-  dht_op_t op;
-  char[32] node_id;
-  char *data;
-  size_t size;
-} dht_baton_t;
-
 typedef enum {
   DHT_PING       = 100,
   DHT_STORE      = 200,
@@ -28,20 +19,25 @@ typedef enum {
 dht_t *
 dht_new();
 
-int
-dht_set(dht_t *dht, char *key, dht_baton_t *baton);
+typedef void
+(*dht_set_callback)(void *ctx, char *key, char *data, int length);
 
 int
-dht_get(dht_t *dht, char *key, dht_baton_t *baton);
+dht_set(dht_t *dht, char *key, char *data, int length, dht_set_callback *cb);
+
+typedef void
+(*dht_get_callback)(void *ctx, char *key, char *data, int length);
 
 int
-dht_receive(dht_t *dht, dht_baton_t *baton);
+dht_get(dht_t *dht, char *key, *dht_set_callback cb);
 
 int
-dht_send(dht_t *dht, dht_baton_t *baton);
+dht_receive(dht_t *dht, dht_op_t op, char *data, int length, char[32] node_id);
+
+int
+dht_send(dht_t *dht, dht_op_t op, char *data, int length, char[32] node_id);
 
 void
 dht_free(dht_t *table);
 
-#undef DHT_BATON_FIELDS
 #endif
