@@ -44,7 +44,7 @@ dht_bucket_new(uint8_t lower, uint8_t upper) {
 
 dht_bucket_t*
 dht_bucket_insert(dht_bucket_t *root, dht_node_t *node) {
-  if(!_contains(root,node)) return NULL; // shouldn't happen
+  if(!_contains(root, node)) return NULL; // shouldn't happen
   if(_has_space(root)) {
     root->nodes[root->length++] = node;
     dht_bucket_update(root);
@@ -61,16 +61,43 @@ dht_bucket_insert(dht_bucket_t *root, dht_node_t *node) {
 }
 
 void
-dht_bucket_walk(dht_bucket_t *root, dht_baton_t *baton) {
+dht_bucket_walk(void *ctx, dht_bucket_t *root, dht_bucket_walk_callback *cb) {
+  if(root->left && root->right) {
+    int stop = cb(ctx, root->left) || cb(ctx, root->right);
+    if(stop == 0)
+      dht_bucket_walk(root, ctx, cb);
+  }
+}
 
+int
+_compare(const void* A, const void* B){
+  dht_node_t a = A;
+  dht_node_t b = B;
+  if(a->created_at < b->created_at) {
+    return 1;
+  } else {
+    return -1;
+  }
+}
+
+int
+_update_walker(void *ctx, dht_bucket_t *root){
+  for(int i = 0; i < root->length; i++){
+    if(node->last_heard > 15 * 60 * 100){
+      dht_bucket_remove_node(root, root->nodes[i]->id);
+      i--;
+    }
+  }
+  qsort(root->nodes, root->length, sizeof(dht_node_t), _compare);
+  return 0;
 }
 
 void
 dht_bucket_update(dht_bucket_t *root) {
-
+  dht_update_walk(NULL, root, _update_walker);
 }
 
 void
 dht_bucket_free(dht_bucket_t *root) {
-
+  dht_update_walk(NULL, root, _free_walker);
 }
