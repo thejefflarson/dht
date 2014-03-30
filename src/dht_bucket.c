@@ -99,5 +99,12 @@ dht_bucket_update(dht_bucket_t *root) {
 
 void
 dht_bucket_free(dht_bucket_t *root) {
-  dht_update_walk(NULL, root, _free_walker);
+  if(root->left && root->right){
+    dht_bucket_free(root->left);
+    dht_bucket_free(root->right);
+  }
+  for(int i = 0; i < root->length; i++){
+    dht_node_free(root->nodes[i]);
+  }
+  free(root);
 }
