@@ -24,9 +24,9 @@ _split(dht_bucket_t *root){
   root->lower = dht_bucket_new(mid, root->upper_limit);
   if(root->upper == NULL || root->lower == NULL) return FALSE;
   for(int i = 0; i < root->length; i++){
-    dht_bucket_t *buck = dht_bucket_insert(root, root->nodes[i]) == NULL)
-    root->nodes[i] = NULL;
+    dht_bucket_t *buck = dht_bucket_insert(root, root->nodes[i]);
     if(buck == NULL) return FALSE;
+    root->nodes[i] = NULL;
   }
   return TRUE;
 }
