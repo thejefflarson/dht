@@ -90,7 +90,8 @@ int
 _update_walker(void *ctx, dht_bucket_t *root){
   for(int i = 0; i < root->length; i++){
     if(node->last_heard > 15 * 60 * 100){
-      dht_bucket_remove_node(root, root->nodes[i]->id);
+      dht_node_free(root->nodes[i]);
+      root->nodes[i] == NULL;
       i--;
     }
   }
@@ -108,8 +109,10 @@ dht_bucket_free(dht_bucket_t *root) {
   dht_bucket_t *b;
   while(root->next != NULL) {
     for(int i = 0; i < 8; i++){
-      if(root->nodes[i] != NULL)
+      if(root->nodes[i] != NULL){
         dht_node_free(root->nodes[i]);
+        root->nodes[i] = NULL;
+      }
     }
     b = root;
     free(root);
