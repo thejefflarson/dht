@@ -4,8 +4,6 @@
 struct dht_bucket_t;
 struct dht_queue_t;
 
-
-
 typedef enum {
   DHT_PING       = 100,
   DHT_STORE      = 200,

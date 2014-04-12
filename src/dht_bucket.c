@@ -62,6 +62,9 @@ dht_bucket_insert(dht_bucket_t *root, dht_node_t *node) {
   while(buck != NULL && !_contains(buck, node))
     buck = buck->next;
 
+  if(buck == NULL)
+    return NULL; // shouldn't happen
+
   if(_has_space(buck)) {
     buck->nodes[buck->length++] = node;
     dht_bucket_update(buck);
@@ -98,10 +101,10 @@ int
 _update_walker(void *ctx, dht_bucket_t *root){
   (void) ctx;
   for(int i = 0; i < root->length; i++){
-    if(root->nodes[i]->last_heard > 15 * 60 * 100){
+    if(root->nodes[i] != NULL && root->nodes[i]->last_heard > 15 * 60 * 100){
       dht_node_free(root->nodes[i]);
       root->nodes[i] = NULL;
-      i--;
+      root->length--;
     }
   }
   qsort(root->nodes, 8, sizeof(dht_node_t), _compare);
