@@ -20,14 +20,22 @@ _mid(dht_bucket_t* root){
 bool
 _split(dht_bucket_t *root){
   uint8_t mid = _mid(root);
-  root->upper = dht_bucket_new(mid, root->upper_limit);
-  root->lower = dht_bucket_new(mid, root->upper_limit);
-  if(root->upper == NULL || root->lower == NULL) return FALSE;
+  dht_bucket_next *next = dht_bucket_new(mid, root->upper_limit);
+  if(next == NULL) return FALSE;
+  next->next = root->next;
+  root->next = next;
+  root->upper_limit = mid;
+
   for(int i = 0; i < root->length; i++){
-    dht_bucket_t *buck = dht_bucket_insert(root, root->nodes[i]);
+    dht_bucket_t *buck;
+    if(!_contains(root, root->nodes[i])) {
+      root->length--;
+      root-nodes[i] == NULL;
+      buck = dht_bucket_insert(next, root-nodes[i]);
+    }
     if(buck == NULL) return FALSE;
-    root->nodes[i] = NULL;
   }
+
   return TRUE;
 }
 
@@ -39,6 +47,7 @@ dht_bucket_new(uint8_t lower, uint8_t upper) {
   memset(bucket, 0, sizeof(dht_bucket_t));
   bucket->upper_limit = upper;
   bucket->lower_limit = lower;
+  bucket->next = NULL;
   return bucket;
 }
 
@@ -52,11 +61,6 @@ dht_bucket_insert(dht_bucket_t *root, dht_node_t *node) {
   } else {
     bool err = _split(root);
     if(err) return NULL;
-  }
-  if((uint8_t) node->id[0] > (root->upper - root->lower) / 2) {
-    return dht_bucket_insert(root->upper, node);
-  } else {
-    return dht_bucket_insert(root->lower, node);
   }
 }
 
@@ -73,7 +77,11 @@ int
 _compare(const void* A, const void* B){
   dht_node_t a = A;
   dht_node_t b = B;
-  if(a->created_at < b->created_at) {
+  if(A == NULL) {
+    return -1;
+  } else if(B == NULL) {
+    return 1;
+  } else if(a->created_at < b->created_at) {
     return 1;
   } else {
     return -1;
@@ -88,7 +96,7 @@ _update_walker(void *ctx, dht_bucket_t *root){
       i--;
     }
   }
-  qsort(root->nodes, root->length, sizeof(dht_node_t), _compare);
+  qsort(root->nodes, 8, sizeof(dht_node_t), _compare);
   return 0;
 }
 

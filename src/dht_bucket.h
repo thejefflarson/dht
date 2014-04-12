@@ -8,8 +8,7 @@ typedef struct dht_bucket_t {
   int length;
   uint8_t upper_limit;
   uint8_t lower_limit; // make these a char array
-  dht_bucket_t *lower;
-  dht_bucket_t *upper;
+  dht_bucket_t *next;
 } dht_bucket_t;
 
 dht_bucket_t*
