@@ -25,22 +25,22 @@ dht_new(){
 
 int
 dht_set(char *key, char *value, size_t size, dht_baton_t *baton){
-
+  return 0;
 }
 
 int
 dht_get(char *key, char **buf, dht_baton_t *baton) {
-
+  return 0;
 }
 
 int
 dht_receive(dht_t *dht, dht_op_t op, char *args) {
-
+  return 0;
 }
 
 int
 dht_send(dht_t *dht, dht_send_baton_t *baton) {
-
+  return 0;
 }
 
 void
@@ -51,10 +51,10 @@ dht_free(dht_t *table) {
 // private functions here for now
 int
 dht_ping(dht_node_t* node) {
-
+  return 0;
 }
 
 int
 dht_find_node(char *key) {
-
+  return 0;
 }

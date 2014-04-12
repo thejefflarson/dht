@@ -1,17 +1,22 @@
-#include <memory.h>
+#include <stdlib.h>
 #include <time.h>
+#include <string.h>
 #include "dht_node.h"
-#include "dht_util.h"
 
 dht_node_t *
-dht_node_new(char[32] id) {
+dht_node_new(char id[32]) {
   dht_node_t* node = (dht_node_t*) malloc(sizeof(dht_node_t));
 
   if(node == NULL)
-    return null;
+    return NULL;
 
-  memcpy(node->id, 32, id);
+  strncpy(node->id, id, 32);
   time(&node->created_at);
   time(&node->last_heard);
   return node;
+}
+
+void
+dht_node_free(dht_node_t* node){
+  free(node);
 }
