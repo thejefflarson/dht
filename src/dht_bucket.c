@@ -71,8 +71,6 @@ dht_bucket_insert(dht_bucket_t *root, dht_node_t *node) {
     if(err) return NULL;
     return dht_bucket_insert(buck, node);
   }
-
-  return NULL;
 }
 
 void
