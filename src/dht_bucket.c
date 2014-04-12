@@ -66,11 +66,9 @@ dht_bucket_insert(dht_bucket_t *root, dht_node_t *node) {
 
 void
 dht_bucket_walk(void *ctx, dht_bucket_t *root, dht_bucket_walk_callback *cb) {
-  if(root->left && root->right) {
-    int stop = cb(ctx, root->left) || cb(ctx, root->right);
-    if(stop == 0)
-      dht_bucket_walk(root, ctx, cb);
-  }
+  int stop = cb(ctx, root->left) || cb(ctx, root->right);
+  if(stop == 0 && root->next != NULL)
+    dht_bucket_walk(ctx, root->next, cb);
 }
 
 int
@@ -102,17 +100,19 @@ _update_walker(void *ctx, dht_bucket_t *root){
 
 void
 dht_bucket_update(dht_bucket_t *root) {
-  dht_update_walk(NULL, root, _update_walker);
+  dht_bucket_walk(NULL, root, _update_walker);
 }
 
 void
 dht_bucket_free(dht_bucket_t *root) {
-  if(root->left && root->right){
-    dht_bucket_free(root->left);
-    dht_bucket_free(root->right);
+  dht_bucket_t *b;
+  while(root->next != NULL) {
+    for(int i = 0; i < 8; i++){
+      if(root->nodes[i] != NULL)
+        dht_node_free(root->nodes[i]);
+    }
+    b = root;
+    free(root);
+    root = b->next;
   }
-  for(int i = 0; i < root->length; i++){
-    dht_node_free(root->nodes[i]);
-  }
-  free(root);
 }
