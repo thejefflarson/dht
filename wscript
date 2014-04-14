@@ -7,20 +7,32 @@ def options(opt):
 
 def configure(conf):
     conf.load('compiler_c')
-    conf.env.append_unique('CFLAGS', ['-std=c99', '-Wall', '-Wextra', '-Werror'])
+    conf.env.append_unique('CFLAGS', ['-std=c99', '-Wall', '-Wextra', '-Werror', '-g'])
     conf.env.append_value('INCLUDES', ['include'])
 
 
 def build(bld):
-    sources = bld.path.ant_glob(['src/*.c'])
+    sources = bld.path.ant_glob(['src/dht_bucket.c', 'src/dht_node.c'])
+
     bld.shlib(
         features='c cshlib',
         source=sources,
+        includes=['src', 'includes'],
         target='dht'
     )
 
     bld.stlib(
         features='c cstlib',
         source=sources,
+        includes=['src', 'includes'],
         target='dht'
+    )
+
+    bld.program(
+        features='c',
+        source='test/test_bucket.c',
+        includes=['src', 'includes'],
+        use='dht',
+        target='test_bucket',
+        install_path=None
     )

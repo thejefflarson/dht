@@ -1,7 +1,9 @@
 #ifndef DHT_BUCKET_H_
 #define DHT_BUCKET_H_
 
+#include <stdint.h>
 #include "dht_node.h"
+
 
 typedef struct dht_bucket_t {
   dht_node_t* nodes[8];

@@ -119,7 +119,7 @@ dht_bucket_update(dht_bucket_t *root) {
 void
 dht_bucket_free(dht_bucket_t *root) {
   dht_bucket_t *b;
-  while(root->next != NULL) {
+  while(root != NULL) {
     for(int i = 0; i < 8; i++){
       if(root->nodes[i] != NULL){
         dht_node_free(root->nodes[i]);
@@ -127,7 +127,7 @@ dht_bucket_free(dht_bucket_t *root) {
       }
     }
     b = root;
-    free(root);
     root = b->next;
+    free(b);
   }
 }

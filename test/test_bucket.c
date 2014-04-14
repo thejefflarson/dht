@@ -9,6 +9,6 @@ test_bucket(){
 }
 
 int
-main(int argc, char **argv){
+main(){
   test_bucket();
 }
