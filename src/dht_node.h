@@ -1,7 +1,7 @@
 #ifndef DHT_NODE_H_
 #define DHT_NODE_H_
 #include <time.h>
-#include <stdboo.h>
+#include <stdbool.h>
 
 typedef struct dh_node_t {
   char id[32];

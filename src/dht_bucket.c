@@ -32,10 +32,12 @@ _split(dht_bucket_t *root){
   root->upper_limit = mid;
 
   for(int i = 0; i < root->length; i++){
+    printf("%i\n", root->length);
     if(!_contains(root, root->nodes[i])) {
-      dht_bucket_insert(next, root->nodes[i]);
-      root->nodes[i] = NULL;
-      root->length--;
+      if(dht_bucket_insert(next, root->nodes[i])) {
+        root->length--;
+        memmove(root->nodes + i, root->nodes + i + 1, sizeof(dht_node_t) * (i * root->length));
+      }
     }
   }
 
@@ -67,7 +69,6 @@ dht_bucket_insert(dht_bucket_t *root, dht_node_t *node) {
 
   if(_has_space(buck)) {
     buck->nodes[buck->length++] = node;
-    dht_bucket_update(buck);
     return buck;
   } else {
     bool err = _split(buck);
@@ -86,11 +87,7 @@ int
 _compare(const void* A, const void* B){
   const dht_node_t* a = A;
   const dht_node_t* b = B;
-  if(a == NULL) {
-    return -1;
-  } else if(b == NULL) {
-    return 1;
-  } else if(a->created_at < b->created_at) {
+  if(a->created_at < b->created_at) {
     return 1;
   } else {
     return -1;
@@ -100,13 +97,15 @@ _compare(const void* A, const void* B){
 int
 _update_walker(void *ctx, dht_bucket_t *root){
   (void) ctx;
-  while(current->next != NULL) {
-    if(!dht_node_good(current)){
-
-      dht_node_free(current);
+  for(int i = 0; i < root->length; i++){
+    if(!dht_node_good(root->nodes[i])){
+      dht_node_free(root->nodes[i]);
       root->length--;
+      memmove(root->nodes + i, root->nodes + i + 1, sizeof(dht_node_t) * (i * root->length));
     }
   }
+  printf("%i\n", root->length);
+  qsort(root->nodes, root->length, sizeof(dht_node_t), _compare);
   return 0;
 }
 
@@ -119,12 +118,8 @@ void
 dht_bucket_free(dht_bucket_t *root) {
   dht_bucket_t *b;
   while(root != NULL) {
-    for(int i = 0; i < 8; i++){
-      if(root->nodes[i] != NULL){
-        dht_node_free(root->nodes[i]);
-        root->nodes[i] = NULL;
-      }
-    }
+    for(int i = 0; i < root->length; i++)
+      dht_node_free(root->nodes[i]);
     b = root;
     root = b->next;
     free(b);
