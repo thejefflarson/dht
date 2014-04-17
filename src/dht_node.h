@@ -6,6 +6,7 @@ typedef struct dh_node_t {
   char id[32];
   time_t created_at;
   time_t last_heard;
+  struct dht_node_t *next;
 } dht_node_t;
 
 dht_node_t *
