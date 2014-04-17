@@ -6,7 +6,7 @@
 #include "dht_bucket.h"
 
 void
-random_bytes(char *buf, size_t size){
+random_bytes(unsigned char *buf, size_t size){
   int f = open("/dev/urandom", O_RDONLY);
   if(!f) exit(1);
   read(f, buf, size);
@@ -27,15 +27,16 @@ _walker(void *ctx, dht_bucket_t *root){
   (void) root;
   int *i = ctx;
   (*i)++;
-  return 1;
+  return 0;
 }
 
 void
 test_bucket_insert(){
   dht_bucket_t *bucket = dht_bucket_new(0, 255);
-  for(int i = 0; i < 2048; i++){
-    char buf[32];
+  for(int i = 0; i < 8; i++){
+    unsigned char buf[32];
     random_bytes(buf, 32);
+    buf[0] = i;
     dht_node_t *node = dht_node_new(buf);
     dht_bucket_insert(bucket, node);
     if(node == NULL) dht_node_free(node);

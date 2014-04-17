@@ -4,13 +4,13 @@
 #include "dht_node.h"
 
 dht_node_t *
-dht_node_new(char id[32]) {
-  dht_node_t* node = (dht_node_t*) malloc(sizeof(dht_node_t));
+dht_node_new(unsigned char id[32]) {
+  dht_node_t* node = calloc(1, sizeof(dht_node_t));
 
   if(node == NULL)
     return NULL;
 
-  strncpy(node->id, id, 32);
+  strncpy((char *)node->id, (char *)id, 32);
   time(&node->created_at);
   time(&node->last_heard);
   return node;
@@ -20,7 +20,6 @@ void
 dht_node_free(dht_node_t *node){
   free(node);
 }
-
 
 bool
 dht_node_good(dht_node_t *node){
