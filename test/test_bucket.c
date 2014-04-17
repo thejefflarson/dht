@@ -33,10 +33,9 @@ _walker(void *ctx, dht_bucket_t *root){
 void
 test_bucket_insert(){
   dht_bucket_t *bucket = dht_bucket_new(0, 255);
-  for(int i = 0; i < 8; i++){
+  for(int i = 0; i < 2048; i++){
     unsigned char buf[32];
     random_bytes(buf, 32);
-    buf[0] = i;
     dht_node_t *node = dht_node_new(buf);
     dht_bucket_insert(bucket, node);
     if(node == NULL) dht_node_free(node);
