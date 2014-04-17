@@ -30,7 +30,6 @@ _split(dht_bucket_t *root){
   dht_bucket_t *next = dht_bucket_new(mid, root->upper_limit);
   if(next == NULL)
     return true;
-  printf("%i %i %i\n", root->lower_limit, mid, root->upper_limit);
 
   next->next = root->next;
   root->next = next;
@@ -40,7 +39,8 @@ _split(dht_bucket_t *root){
     if(!_contains(root, root->nodes[i])) {
       if(dht_bucket_insert(next, root->nodes[i])) {
         root->length--;
-        memmove(root->nodes + i, root->nodes + i + 1, sizeof(dht_node_t *) * (root->length - i - 1));
+        if(i + 1 < root->length)
+          memmove(root->nodes + i, root->nodes + i + 1, sizeof(dht_node_t *) * (root->length - i - 1));
       }
     }
   }
@@ -91,7 +91,8 @@ _update_walker(void *ctx, dht_bucket_t *root){
     if(!dht_node_good(root->nodes[i])){
       dht_node_free(root->nodes[i]);
       root->length--;
-      memmove(root->nodes + i, root->nodes + i + 1, sizeof(dht_node_t *) * (root->length - i));
+      if(i + 1 < root->length)
+        memmove(root->nodes + i, root->nodes + i + 1, sizeof(dht_node_t *) * (root->length - i));
     }
   }
   return 0;
