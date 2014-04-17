@@ -5,7 +5,7 @@
 #include "dht_node.h"
 
 typedef struct dht_bucket_t {
-  dht_node_t* node;
+  dht_node_t* nodes[8];
   int length;
   uint8_t upper_limit;
   uint8_t lower_limit;

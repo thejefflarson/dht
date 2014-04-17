@@ -17,6 +17,12 @@ dht_node_new(char id[32]) {
 }
 
 void
-dht_node_free(dht_node_t* node){
+dht_node_free(dht_node_t *node){
   free(node);
+}
+
+
+bool
+dht_node_good(dht_node_t *node){
+  return time(NULL) - node->last_heard < 1500;
 }

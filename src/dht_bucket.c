@@ -66,12 +66,10 @@ dht_bucket_insert(dht_bucket_t *root, dht_node_t *node) {
   }
 
   if(_has_space(buck)) {
-    puts("inserting");
     buck->nodes[buck->length++] = node;
     dht_bucket_update(buck);
     return buck;
   } else {
-    puts("splitting");
     bool err = _split(buck);
     if(err) return NULL;
     return dht_bucket_insert(buck, node);
@@ -102,14 +100,13 @@ _compare(const void* A, const void* B){
 int
 _update_walker(void *ctx, dht_bucket_t *root){
   (void) ctx;
-  for(int i = 0; i < root->length; i++){
-    if(root->nodes[i] != NULL && (time(NULL) - root->nodes[i]->last_heard) > 15 * 60 * 100){
-      dht_node_free(root->nodes[i]);
-      root->nodes[i] = NULL;
+  while(current->next != NULL) {
+    if(!dht_node_good(current)){
+
+      dht_node_free(current);
       root->length--;
     }
   }
-  qsort(root->nodes, 8, sizeof(dht_node_t), _compare);
   return 0;
 }
 
