@@ -1,12 +1,14 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <string.h>
+#include <stdio.h>
+
 #include "dht_bucket.h"
 
 
 bool
 _contains(dht_bucket_t *root, dht_node_t *node){
-  return root->upper_limit >= (uint8_t) node->id[0] && root->lower_limit < (uint8_t) node->id[0];
+  return root->upper_limit >= (uint8_t) node->id[0] && root->lower_limit <= (uint8_t) node->id[0];
 }
 
 bool
@@ -62,14 +64,17 @@ dht_bucket_insert(dht_bucket_t *root, dht_node_t *node) {
   while(buck != NULL && !_contains(buck, node))
     buck = buck->next;
 
-  if(buck == NULL)
+  if(buck == NULL){
     return NULL; // shouldn't happen
+  }
 
   if(_has_space(buck)) {
+    puts("inserting");
     buck->nodes[buck->length++] = node;
     dht_bucket_update(buck);
     return buck;
   } else {
+    puts("splitting");
     bool err = _split(buck);
     if(err) return NULL;
     return dht_bucket_insert(buck, node);
@@ -86,9 +91,9 @@ int
 _compare(const void* A, const void* B){
   const dht_node_t* a = A;
   const dht_node_t* b = B;
-  if(A == NULL) {
+  if(a == NULL) {
     return -1;
-  } else if(B == NULL) {
+  } else if(b == NULL) {
     return 1;
   } else if(a->created_at < b->created_at) {
     return 1;
@@ -101,7 +106,7 @@ int
 _update_walker(void *ctx, dht_bucket_t *root){
   (void) ctx;
   for(int i = 0; i < root->length; i++){
-    if(root->nodes[i] != NULL && root->nodes[i]->last_heard > 15 * 60 * 100){
+    if(root->nodes[i] != NULL && (time(NULL) - root->nodes[i]->last_heard) > 15 * 60 * 100){
       dht_node_free(root->nodes[i]);
       root->nodes[i] = NULL;
       root->length--;
