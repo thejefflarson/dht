@@ -13,10 +13,7 @@ _contains(dht_bucket_t *root, dht_node_t *node){
 
 bool
 _has_space(dht_bucket_t *root){
-  for(int i = 0; i < 8; i++)
-    if(root->nodes[i] == NULL)
-      return true;
-  return false;
+  return root->length < 8;
 }
 
 uint8_t
