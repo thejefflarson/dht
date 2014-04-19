@@ -38,9 +38,9 @@ _split(dht_bucket_t *root){
   for(int i = 0; i < root->length; i++){
     if(!_contains(root, root->nodes[i])) {
       if(dht_bucket_insert(next, root->nodes[i])) {
-        root->length--;
         if(i + 1 < root->length)
           memmove(root->nodes + i, root->nodes + i + 1, sizeof(dht_node_t *) * (root->length - i - 1));
+        root->length--;
       }
     }
   }
@@ -90,9 +90,9 @@ _update_walker(void *ctx, dht_bucket_t *root){
   for(int i = 0; i < root->length; i++){
     if(!dht_node_good(root->nodes[i])){
       dht_node_free(root->nodes[i]);
-      root->length--;
       if(i + 1 < root->length)
-        memmove(root->nodes + i, root->nodes + i + 1, sizeof(dht_node_t *) * (root->length - i));
+        memmove(root->nodes + i, root->nodes + i + 1, sizeof(dht_node_t *) * (root->length - i - 1));
+      root->length--;
     }
   }
   return 0;

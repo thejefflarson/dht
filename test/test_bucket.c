@@ -26,25 +26,31 @@ int
 _walker(void *ctx, dht_bucket_t *root){
   (void) root;
   int *i = ctx;
-  (*i)++;
+  (*i) += root->length;
   return 0;
 }
 
 void
 test_bucket_insert(){
   dht_bucket_t *bucket = dht_bucket_new(0, 255);
+  int ins = 0;
   for(int i = 0; i < 2048; i++){
     unsigned char buf[32];
     random_bytes(buf, 32);
     dht_node_t *node = dht_node_new(buf);
-    dht_bucket_insert(bucket, node);
-    if(node == NULL) dht_node_free(node);
+    dht_bucket_t *nins = dht_bucket_insert(bucket, node);
+    if(!nins) {
+      dht_node_free(node);
+    } else {
+      ins++;
+    }
   }
   int j = 0;
   dht_bucket_walk(&j, bucket, _walker);
-  printf("%i\n", j);
+  printf("%i %i\n", j, ins);
   assert(bucket != NULL);
   dht_bucket_free(bucket);
+  assert(j == ins);
 }
 
 int
