@@ -47,7 +47,6 @@ test_bucket_insert(){
   }
   int j = 0;
   dht_bucket_walk(&j, bucket, _walker);
-  printf("%i %i\n", j, ins);
   assert(bucket != NULL);
   dht_bucket_free(bucket);
   assert(j == ins);
