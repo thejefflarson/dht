@@ -1,5 +1,6 @@
 #ifndef DHT_NODE_H_
 #define DHT_NODE_H_
+
 #include <time.h>
 #include <stdbool.h>
 
@@ -16,6 +17,6 @@ bool
 dht_node_good(dht_node_t *);
 
 void
-dht_node_free(dht_node_t*);
+dht_node_free(dht_node_t *);
 
 #endif
