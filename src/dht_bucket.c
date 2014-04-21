@@ -2,9 +2,7 @@
 #include <stdbool.h>
 #include <string.h>
 #include <stdio.h>
-
 #include "dht_bucket.h"
-
 
 static bool
 _contains(dht_bucket_t *root, dht_node_t *node){

@@ -26,7 +26,6 @@ dht_node_good(dht_node_t *node){
   return time(NULL) - node->last_heard < 1500;
 }
 
-
 int
 dht_node_compare(dht_node_t *a, dht_node_t *b){
   for(int i = 0; i < 32; i++){
