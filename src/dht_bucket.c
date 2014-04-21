@@ -6,22 +6,22 @@
 #include "dht_bucket.h"
 
 
-bool
+static bool
 _contains(dht_bucket_t *root, dht_node_t *node){
   return root->upper_limit > (uint8_t) node->id[0] && root->lower_limit <= (uint8_t) node->id[0];
 }
 
-bool
+static bool
 _has_space(dht_bucket_t *root){
   return root->length < 8;
 }
 
-uint8_t
+static uint8_t
 _mid(dht_bucket_t* root){
   return (root->upper_limit - root->lower_limit) / 2 + root->lower_limit;
 }
 
-bool
+static bool
 _split(dht_bucket_t *root){
   if((root->upper_limit - root->lower_limit) == 1)
     return true; // can't split anymore
@@ -75,6 +75,7 @@ dht_bucket_insert(dht_bucket_t *root, dht_node_t *node) {
     if(err) return NULL;
   }
 
+  // have to check again to see if some nodes moved over
   if(_has_space(root)) {
     root->nodes[root->length++] = node;
     dht_bucket_update(root);
@@ -91,7 +92,7 @@ dht_bucket_walk(void *ctx, dht_bucket_t *root, dht_bucket_walk_callback cb) {
     dht_bucket_walk(ctx, root->next, cb);
 }
 
-int
+static int
 _update_walker(void *ctx, dht_bucket_t *root){
   (void) ctx;
   for(int i = 0; i < root->length; i++){

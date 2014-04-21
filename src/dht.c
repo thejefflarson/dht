@@ -5,10 +5,10 @@
 
 dht_t *
 dht_new(){
-  dht_t *dht = (dht_t *) malloc(sizeof(dht_t));
+  dht_t *dht = calloc(1, sizeof(dht_t));
   if(dht == NULL) return NULL;
 
-  dht->bucket = (dht_bucket_t *) dht_bucket_new(0, 255);
+  dht->bucket = dht_bucket_new(0, 255);
   if(dht->bucket == NULL) {
     free(dht);
     return NULL;
