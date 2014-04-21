@@ -36,5 +36,5 @@ dht_node_compare(dht_node_t *a, dht_node_t *b){
 
     return aint > bint ? 1 : -1;
   }
-  return 0
+  return 0;
 }
