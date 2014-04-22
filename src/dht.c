@@ -20,7 +20,6 @@ dht_new(){
   return dht;
 }
 
-
 int
 dht_get(dht_t *dht, char *key, dht_get_callback cb) {
   return 0;
@@ -37,11 +36,10 @@ dht_ping(dht_t *table, dht_node_t* node) {
   table->send(dht, DHT_PING, NULL, 0, node->id);
 }
 
-
 static struct _find_state {
   unsigned char target[32];
   dht_node_t *current;
-};
+}
 
 static int
 _find_walker(void *ctx, dht_bucket_t *root){
