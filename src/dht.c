@@ -49,12 +49,11 @@ _find_walker(void *ctx, dht_bucket_t *root){
   unsigned char adelta[32], bdelta[32];
 
   for(int i = 0; i < root->length; i++){
-    dht_xor(adelta, state->target, state->current);
-    dht_xor(bdelta, state->target, root->nodes[i]->id);
+    dht_xor(adelta, state->target, root->nodes[i]->id);
+    dht_xor(bdelta, state->target, state->current);
 
-    if(dht_compare(adelta, bdelta) == -1){
+    if(dht_compare(adelta, bdelta) == -1)
       state->current = root->nodes[i];
-    }
   }
 
   return 0;
