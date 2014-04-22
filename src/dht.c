@@ -38,13 +38,22 @@ dht_ping(dht_t *table, dht_node_t* node) {
 }
 
 
+static struct _find_state {
+  unsigned char target[32];
+  dht_node_t *current;
+};
+
 static int
 _find_walker(void *ctx, dht_bucket_t *root){
-  dht_node_t* min = *ctx;
+  struct _find_state *state = *ctx;
+  unsigned char adelta[32], bdelta[32];
 
   for(int i = 0; i < root->length; i++){
-    if(dht_compare(min, &root->nodes[i]) == -1){
-      ctx = &root->nodes[i];
+    dht_xor(adelta, state->target, state->current);
+    dht_xor(bdelta, state->target, root->nodes[i]->id);
+
+    if(dht_compare(adelta, bdelta) == -1){
+      state->current = root->nodes[i];
     }
   }
 
@@ -52,12 +61,15 @@ _find_walker(void *ctx, dht_bucket_t *root){
 }
 
 dht_node_t *
-dht_find_node(dht_t *table, char *key) {
+dht_find_node(dht_t *table, unsigned char key[32]) {
   if(table->bucket->length == 0) return NULL;
 
-  dht_node_t *min = table->bucket->nodes[0];
+  struct _find_state state;
 
-  dht_bucket_walk((void *) &min, table->root, );
+  state.current = table->bucket->nodes[0];
+  state.target = key;
+
+  dht_bucket_walk((void *) &min, table->root, _find_walker);
 
   return min;
 }
