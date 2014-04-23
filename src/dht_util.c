@@ -1,3 +1,4 @@
+#include <stdint.h>
 #include "dht_util.h"
 
 void
