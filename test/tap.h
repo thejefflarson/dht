@@ -8,6 +8,6 @@
     printf("not ok %i - %s, %s: %i\n", __test_count, message, __FILE__, __LINE__);\
     exit(1);\
   }\
-} while(0);
+} while(0)
 
 #define start_test printf("1..%i\n", __COUNTER__)
