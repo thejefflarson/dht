@@ -3,9 +3,6 @@
 #include "dht_node.h"
 #include "dht_bucket.h"
 
-#define DHT_TOKEN_LENGTH 32
-
-
 dht_t *
 dht_new(){
   dht_t *dht = calloc(1, sizeof(dht_t));
@@ -30,7 +27,6 @@ dht_free(dht_t *table) {
   free(table)
 }
 
-// private functions here for now
 void
 dht_ping(dht_t *table, dht_node_t* node) {
   table->send(dht, DHT_PING, NULL, 0, node->id);
@@ -39,7 +35,7 @@ dht_ping(dht_t *table, dht_node_t* node) {
 static struct _find_state {
   unsigned char target[32];
   dht_node_t *current;
-}
+};
 
 static int
 _find_walker(void *ctx, dht_bucket_t *root){

@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include "dht_bucket.h"
+#include "tap.h"
 
 void
 random_bytes(unsigned char *buf, size_t size){
@@ -13,11 +14,10 @@ random_bytes(unsigned char *buf, size_t size){
   close(f);
 }
 
-
 void
 test_bucket(){
   dht_bucket_t *bucket = dht_bucket_new(0, 255);
-  assert(bucket != NULL);
+  ok(bucket != NULL, "bucket is not null");
   dht_bucket_free(bucket);
 }
 
@@ -33,6 +33,7 @@ _walker(void *ctx, dht_bucket_t *root){
 void
 test_bucket_insert(){
   dht_bucket_t *bucket = dht_bucket_new(0, 255);
+  ok(bucket != NULL, "bucket is not null");
   int ins = 0;
   for(int i = 0; i < 2048; i++){
     unsigned char buf[32];
@@ -47,13 +48,13 @@ test_bucket_insert(){
   }
   int j = 0;
   dht_bucket_walk(&j, bucket, _walker);
-  assert(bucket != NULL);
   dht_bucket_free(bucket);
-  assert(j == ins);
+  ok(j == ins, "right number of nodes inserted");
 }
 
 int
 main(){
+  start_test;
   test_bucket();
   test_bucket_insert();
 }
