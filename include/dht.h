@@ -14,12 +14,14 @@ typedef enum {
 typedef struct dht_t {
   struct dht_queue_t *queue;
   struct dht_bucket_t *bucket;
-  int (*dht_recv)(struct dht_t *dht, dht_op_t op, char *data, int length, unsigned char node_id[32]);
-  int (*dht_send)(struct dht_t *dht, dht_op_t op, char *data, int length, unsigned char node_id[32]);
+  int (*send)(struct dht_t *dht, dht_op_t op, char *data, int length, unsigned char node_id[32]);
 } dht_t;
 
 dht_t *
 dht_new();
+
+int
+dht_recv(dht_t *dht, dht_op_t op, char *data, int length, unsigned char node_id[32]);
 
 typedef void
 (*dht_get_callback)(void *ctx, dht_node_t *node, int length);

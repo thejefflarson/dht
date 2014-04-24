@@ -13,6 +13,9 @@ typedef struct dh_node_t {
 dht_node_t*
 dht_node_new(unsigned char[32]);
 
+void
+dht_node_update(dht_node_t *);
+
 bool
 dht_node_good(dht_node_t *);
 

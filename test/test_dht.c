@@ -1,12 +1,17 @@
-#include <assert.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include "util.h"
 #include "dht_bucket.h"
 #include "tap.h"
+
+static void
+test_find_node(){
+  dht_t *dht = dht_new();
+  ok(dht != NULL, "dht allocated correctly");
+
+  dht_free(dht);
+}
 
 void
 main(){
   start_test;
+  test_ping();
 }

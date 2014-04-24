@@ -11,15 +11,20 @@ dht_node_new(unsigned char id[32]) {
   if(node == NULL)
     return NULL;
 
-  strncpy((char *)node->id, (char *)id, 32);
+  strncpy((char *) node->id, (char *) id, 32);
   time(&node->created_at);
-  time(&node->last_heard);
+  dht_node_update(node);
   return node;
 }
 
 void
 dht_node_free(dht_node_t *node){
   free(node);
+}
+
+void
+dht_node_update(dht_node_t *node){
+  time(&node->last_heard);
 }
 
 bool

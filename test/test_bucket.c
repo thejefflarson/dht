@@ -1,20 +1,8 @@
-#include <assert.h>
-#include <unistd.h>
-#include <fcntl.h>
-#include <stdlib.h>
-#include <stdio.h>
+#include "util.h"
 #include "dht_bucket.h"
 #include "tap.h"
 
-void
-random_bytes(unsigned char *buf, size_t size){
-  int f = open("/dev/urandom", O_RDONLY);
-  if(!f) exit(1);
-  read(f, buf, size);
-  close(f);
-}
-
-void
+static void
 test_bucket(){
   dht_bucket_t *bucket = dht_bucket_new(0, 255);
   ok(bucket != NULL, "bucket is not null");
@@ -22,7 +10,7 @@ test_bucket(){
 }
 
 
-int
+static int
 _walker(void *ctx, dht_bucket_t *root){
   (void) root;
   int *i = ctx;
@@ -30,7 +18,7 @@ _walker(void *ctx, dht_bucket_t *root){
   return 0;
 }
 
-void
+static void
 test_bucket_insert(){
   dht_bucket_t *bucket = dht_bucket_new(0, 255);
   ok(bucket != NULL, "bucket is not null");

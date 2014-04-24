@@ -23,14 +23,27 @@ dht_get(dht_t *dht, char *key, dht_get_callback cb) {
 }
 
 void
-dht_free(dht_t *table) {
-  free(table)
+dht_free(dht_t *dht) {
+  free(dht)
 }
 
-void
-dht_ping(dht_t *table, dht_node_t* node) {
-  table->send(dht, DHT_PING, NULL, 0, node->id);
+static int
+_ping(dht_t *dht, node->id) {
 }
+
+int
+dht_recv(dht_t *dht, dht_op_t op, char *data, int length, unsigned char node_id[32]) {
+  switch(op){
+    case DHT_PING:
+      dht_node_t* node = dht_find_node(dht, node_id);
+      if(node == NULL) return 1;
+      dht_node_update(node);
+      return 0;
+    default:
+      break;
+  }
+}
+
 
 static struct _find_state {
   unsigned char target[32];
@@ -54,15 +67,15 @@ _find_walker(void *ctx, dht_bucket_t *root){
 }
 
 dht_node_t *
-dht_find_node(dht_t *table, unsigned char key[32]) {
-  if(table->bucket->length == 0) return NULL;
+dht_find_node(dht_t *dht, unsigned char key[32]) {
+  if(dht->bucket->length == 0) return NULL;
 
   struct _find_state state;
 
-  state.current = table->bucket->nodes[0];
+  state.current = dht->bucket->nodes[0];
   state.target = key;
 
-  dht_bucket_walk((void *) &min, table->root, _find_walker);
+  dht_bucket_walk((void *) &min, dht->root, _find_walker);
 
   return min;
 }
