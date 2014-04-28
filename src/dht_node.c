@@ -5,12 +5,13 @@
 #include "dht_util.h"
 
 dht_node_t *
-dht_node_new(unsigned char id[32]) {
+dht_node_new(unsigned char id[32], sockaddr_storage *address) {
   dht_node_t* node = calloc(1, sizeof(dht_node_t));
 
   if(node == NULL)
     return NULL;
 
+  memcpy(node->address, sizeof(sockaddr_storage), address);
   strncpy((char *) node->id, (char *) id, 32);
   time(&node->created_at);
   dht_node_update(node);

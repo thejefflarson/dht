@@ -38,12 +38,18 @@ dht_recv(dht_t *dht, dht_op_t op, char *data, int length, unsigned char node_id[
       dht_node_t* node = dht_find_node(dht, node_id);
       if(node == NULL) return 1;
       dht_node_update(node);
+      dht->send(dht, DHT_PONG, NULL, 0, node);
+      return 0;
+    case DHT_FIND_NODE:
+      dht_node_t* node = dht_find_node(dht, node_id);
+      if(node == NULL) return 1;
+      // TODO: define encoding.
+      dht->send(dht, DHT_NODE, node, sizeof(node), node);
       return 0;
     default:
-      break;
+      return 1;
   }
 }
-
 
 static struct _find_state {
   unsigned char target[32];
