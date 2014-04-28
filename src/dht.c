@@ -43,7 +43,6 @@ dht_recv(dht_t *dht, dht_op_t op, char *data, int length, unsigned char node_id[
     case DHT_FIND_NODE:
       dht_node_t* node = dht_find_node(dht, node_id);
       if(node == NULL) return 1;
-      // TODO: define encoding.
       dht->send(dht, DHT_NODE, node, sizeof(node), node);
       return 0;
     default:
