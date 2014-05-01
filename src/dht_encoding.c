@@ -11,14 +11,14 @@ dht_be_decode(char *str, long long size){
         if(*str != 'e') err = 1;
         break;
       case 'l':
-        decode_list(&str, &size, &err);
+        decode_list(node, &str, &size, &err);
         break;
       case 'd':
-        decode_dictionary(&str, &size, &err);
+        decode_dictionary(node, &str, &size, &err);
         break;
       default:
         if(_peek(str, size, ':')) {
-          decode_string(&str, &size, &err);
+          node->val.str = decode_string(&str, &size, &err);
         } else {
           err = 1;
         }
