@@ -4,20 +4,31 @@ dht_be_node *
 dht_be_decode(char *str, long long size){
   int err = 0;
   dht_be_node *node = calloc(1, sizeof(dht_be_node));
-  while(size-- && err == 0) {
+  while(size > 0 && err == 0) {
     switch(*str){
-      case '':
-
+      case 'i':
+        node->val.i = parse_int(&str, &size, &err);
+        if(*str != 'e') err = 1;
         break;
-      case '':
-
+      case 'l':
+        decode_list(&str, &size, &err);
+        break;
+      case 'd':
+        decode_dictionary(&str, &size, &err);
         break;
       default:
-        err = 1;
+        if(_peek(str, size, ':')) {
+          decode_string(&str, &size, &err);
+        } else {
+          err = 1;
+        }
         break;
     }
-
-    str++;
+    if(*str != 'e') {
+      err = 1;
+    } else {
+      str++;
+    }
   }
 
   if(err) {
@@ -35,5 +46,5 @@ dht_be_encode(dht_be_node *node){
 
 void
 dht_be_free(dht_be_node *node) {
-
+  free(node);
 }
