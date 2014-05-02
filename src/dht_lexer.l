@@ -23,7 +23,7 @@ NUMBER [\-0-9]+
   long long num = strtoll(yytext, yytext + 256, 10);
   if(perror(errno == EINVAL || ERANGE)) yyerror();
   yylval->int = num;
-  return TOKEN_NUMBER;
+  return NUMBER;
 }
 
 {STRING} {
@@ -32,13 +32,13 @@ NUMBER [\-0-9]+
   if(errno == EINVAL || ERANGE) yyerror();
   strndup(yylval->str, num, yytext);
   yyless(yyleng - num);
-  return TOKEN_STRING;
+  return STRING;
 }
 
-{INT}  { return TOKEN_INT;  }
-{DICT} { return TOKEN_DICT; }
-{END}  { return TOKEN_END;  }
-{LIST} { return TOKEN_LIST; }
+{INT}  { return INT;  }
+{DICT} { return DICT; }
+{END}  { return END;  }
+{LIST} { return LIST; }
 . { } // silence warnings because we're doing something weird in number and string
 %%
 
