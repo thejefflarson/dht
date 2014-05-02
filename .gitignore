@@ -2,3 +2,5 @@
 .waf-*
 .lock-*
 build
+dht_lexer.h
+dht_lexer.c
