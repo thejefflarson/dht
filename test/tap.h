@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <stdlib.h>
 
 #define ok(test, message) do {\
   int __test_count = __COUNTER__ + 1;\
