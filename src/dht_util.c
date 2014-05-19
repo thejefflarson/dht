@@ -8,7 +8,6 @@ dht_xor(unsigned char target[32], unsigned char a[32], unsigned char b[32]) {
   }
 }
 
-
 int
 dht_compare(unsigned char a[32], unsigned char b[32]){
   for(int i = 0; i < 32; i++){

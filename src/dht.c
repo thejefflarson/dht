@@ -32,7 +32,7 @@ _ping(dht_t *dht, node->id) {
 }
 
 int
-dht_recv(dht_t *dht, dht_op_t op, char *data, int length, unsigned char node_id[32]) {
+dht_recv(dht_t *dht, char *data, int length, unsigned char node_id[32]) {
   switch(op){
     case DHT_PING:
       dht_node_t* node = dht_find_node(dht, node_id);
@@ -43,7 +43,7 @@ dht_recv(dht_t *dht, dht_op_t op, char *data, int length, unsigned char node_id[
     case DHT_FIND_NODE:
       dht_node_t* node = dht_find_node(dht, node_id);
       if(node == NULL) return 1;
-      dht->send(dht, DHT_NODE, node, sizeof(node), node);
+      dht->send(dht, DHT_NODES, node, sizeof(node), node);
       return 0;
     default:
       return 1;
