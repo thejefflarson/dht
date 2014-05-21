@@ -7,7 +7,7 @@ def options(opt):
 
 def configure(conf):
     conf.load('compiler_c')
-    conf.env.append_unique('CFLAGS', ['-std=c99', '-Wall', '-Wextra', '-Werror', '-g'])
+    conf.env.append_unique('CFLAGS', ['-std=c99', '-Wall', '-Wextra', '-Werror', '-pedantic', '-Wno-error=unused-const-variable', '-g'])
     conf.env.append_value('INCLUDES', ['include'])
     conf.load('ragel', tooldir = 'tools')
 

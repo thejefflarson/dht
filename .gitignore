@@ -3,5 +3,4 @@
 .lock-*
 *.pyc
 build
-dht_lexer.h
-dht_lexer.c
+src/dht_protocol.c

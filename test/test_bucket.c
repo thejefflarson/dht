@@ -23,10 +23,11 @@ test_bucket_insert(){
   dht_bucket_t *bucket = dht_bucket_new(0, 255);
   ok(bucket != NULL, "bucket is not null");
   int ins = 0;
+  struct sockaddr_storage st;
   for(int i = 0; i < 2048; i++){
     unsigned char buf[32];
     random_bytes(buf, 32);
-    dht_node_t *node = dht_node_new(buf);
+    dht_node_t *node = dht_node_new(buf, &st);
     dht_bucket_t *nins = dht_bucket_insert(bucket, node);
     if(!nins) {
       dht_node_free(node);

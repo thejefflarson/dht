@@ -11,16 +11,18 @@ typedef enum {
   DHT_VALUE=70
 } dht_op_t;
 
-typedef dht_proto {
-  dht_op_t type;
+typedef struct dht_proto {
+  dht_op_t op;
   union {
-    char [32]node_id;
-    dht_proto *next;
+    char node_id[32];
   } val;
+  struct dht_proto *next;
 } dht_proto_t;
-
 
 dht_proto_t *
 parse(char *data, int length);
+
+void
+dht_proto_free(dht_proto_t *);
 
 #endif

@@ -13,7 +13,7 @@ typedef struct dh_node_t {
 } dht_node_t;
 
 dht_node_t*
-dht_node_new(unsigned char[32], struct sockaddr_storage *address);
+dht_node_new(const unsigned char[32], const struct sockaddr_storage *address);
 
 void
 dht_node_update(dht_node_t *);

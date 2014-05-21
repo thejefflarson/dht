@@ -1,4 +1,5 @@
 #include <string.h>
+#include <stdlib.h>
 
 #include "dht_protocol.h"
 
@@ -27,8 +28,8 @@
       return NULL;
     }
 
+    strncpy(cur->val.node_id, s, 32);
     cur = cur->next;
-    strndup(cur->val.node_id, s, 32);
   }
 
   node = any{32} >start_node %node;
@@ -46,6 +47,7 @@ dht_proto_t *
 parse(char *data, int length){
   char *p  = data;
   char *pe = p + length;
+  char *eof = pe;
   char *s  = p;
   int cs   = 0;
 
@@ -60,7 +62,15 @@ parse(char *data, int length){
   return proto;
 }
 
-char *
-encode(dht_proto_t *proto){
-  return "";
+// char *
+// encode(dht_proto_t *proto){
+//   return "";
+// }
+
+void
+dht_proto_free(dht_proto_t *proto){
+  dht_proto_t *cur = proto;
+  while((cur = cur->next))
+    free(cur);
+  free(proto);
 }
