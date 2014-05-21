@@ -28,14 +28,13 @@
     }
 
     cur = cur->next;
-    strndup(cur->val.id, s, 32);
+    strndup(cur->val.node_id, s, 32);
   }
 
   node = any{32} >start_node %node;
 
   ping = DHT_PING @ping;
   find_nodes = DHT_FIND_NODES @find_nodes node;
-
   Protocol = ping | find_nodes;
 
   main := Protocol;
@@ -53,6 +52,7 @@ parse(char *data, int length){
   dht_proto_t *proto = calloc(1, sizeof(dht_proto_t));
   if(!proto)
     return NULL;
+
   dht_proto_t *cur = proto;
 
   %% write exec;

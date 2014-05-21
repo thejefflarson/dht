@@ -6,7 +6,7 @@ static void
 test_find_node(){
   dht_t *dht = dht_new();
   ok(dht != NULL, "dht allocated correctly");
-
+  // todo
   dht_free(dht);
 }
 

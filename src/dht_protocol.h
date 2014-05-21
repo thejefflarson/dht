@@ -11,7 +11,13 @@ typedef enum {
   DHT_VALUE=70
 } dht_op_t;
 
-typedef dh
+typedef dht_proto {
+  dht_op_t type;
+  union {
+    char [32]node_id;
+    dht_proto *next;
+  } val;
+} dht_proto_t;
 
 
 dht_proto_t *
