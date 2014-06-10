@@ -85,6 +85,7 @@ dht_bucket_insert(dht_bucket_t *root, dht_node_t *node) {
   return root;
 }
 
+// TODO: make non-recursive
 void
 dht_bucket_walk(void *ctx, dht_bucket_t *root, dht_bucket_walk_callback cb) {
   if(cb(ctx, root) == 0 && root->next != NULL)
