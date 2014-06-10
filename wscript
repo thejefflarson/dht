@@ -37,3 +37,13 @@ def build(bld):
         target='test_bucket',
         install_path=None
     )
+
+    bld.program(
+        features='c',
+        source='test/test_protocol.c',
+        includes=['src', 'includes'],
+        use='dht',
+        target='test_protocol',
+        install_path=None
+    )
+

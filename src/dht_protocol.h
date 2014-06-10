@@ -1,5 +1,5 @@
-#ifndef DHT_NODE_H_
-#define DHT_NODE_H_
+#ifndef DHT_PROTOCOL_H_
+#define DHT_PROTOCOL_H_
 
 typedef enum {
   DHT_PING=10,
@@ -20,7 +20,10 @@ typedef struct dht_proto {
 } dht_proto_t;
 
 dht_proto_t *
-parse(char *data, int length);
+parse(const char *data, const int length);
+
+int
+encode(char **ret, const dht_proto_t *proto);
 
 void
 dht_proto_free(dht_proto_t *);

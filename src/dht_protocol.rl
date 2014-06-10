@@ -1,5 +1,6 @@
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "dht_protocol.h"
 
@@ -33,20 +34,21 @@
   }
 
   node = any{32} >start_node %node;
-
   ping = DHT_PING @ping;
   find_nodes = DHT_FIND_NODES @find_nodes node;
+
   Protocol = ping | find_nodes;
 
-  main := Protocol;
+  main := Protocol $! { puts("error"); };
 }%%
 
 %% write data;
 
 dht_proto_t *
-parse(char *data, int length){
-  char *p  = data;
+parse(const char *data, const int length){
+  char *p  = (char *) data;
   char *pe = p + length;
+
   char *eof = pe;
   char *s  = p;
   int cs   = 0;
@@ -57,15 +59,24 @@ parse(char *data, int length){
 
   dht_proto_t *cur = proto;
 
+  %% write init;
   %% write exec;
 
   return proto;
 }
 
-// char *
-// encode(dht_proto_t *proto){
-//   return "";
-// }
+int
+encode(char **ret, const dht_proto_t *proto){
+  switch(proto->op){
+    case DHT_PING:
+      *ret = calloc(1, sizeof(char));
+      *ret[0] = DHT_PING;
+      break;
+    default:
+      asprintf(ret, "err");
+  }
+  return 0;
+}
 
 void
 dht_proto_free(dht_proto_t *proto){
