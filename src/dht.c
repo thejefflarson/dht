@@ -17,18 +17,9 @@ dht_new(){
   return dht;
 }
 
-int
-dht_get(dht_t *dht, char *key, dht_get_callback cb) {
-  return 0;
-}
-
 void
 dht_free(dht_t *dht) {
   free(dht)
-}
-
-static int
-_ping(dht_t *dht, node->id) {
 }
 
 int
@@ -40,13 +31,13 @@ dht_recv(dht_t *dht, char *data, int length, unsigned char node_id[32]) {
       dht_node_update(node);
       dht->send(dht, DHT_PONG, NULL, 0, node);
       return 0;
-    case DHT_FIND_NODE:
+    case DHT_FIND_NODES:
       dht_node_t* node = dht_find_node(dht, node_id);
       if(node == NULL) return 1;
       dht->send(dht, DHT_NODES, node, sizeof(node), node);
       return 0;
     default:
-      return 1;
+      return -1;
   }
 }
 

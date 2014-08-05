@@ -17,7 +17,7 @@
     proto->op = DHT_FIND_NODES;
   }
 
-  action start_node {
+  action mark {
     s = p;
   }
 
@@ -29,17 +29,22 @@
       return NULL;
     }
 
-    strncpy(cur->val.node_id, s, 32);
+    if(s + 32 > pe) fgoto protocol_error;
+
+    strncpy(cur->val.node_id, s + 1, 32);
     cur = cur->next;
   }
 
-  node = any{32} >start_node %node;
-  ping = DHT_PING @ping;
-  find_nodes = DHT_FIND_NODES @find_nodes node;
+  action protocol_error {
+    puts("error"); return NULL;
+  }
+
+  ping = DHT_PING @ping >mark;
+  find_nodes = DHT_FIND_NODES @find_nodes >mark %node;
 
   Protocol = ping | find_nodes;
 
-  main := Protocol $! { puts("error"); };
+  main := Protocol $! ;
 }%%
 
 %% write data;
