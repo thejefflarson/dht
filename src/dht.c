@@ -23,19 +23,28 @@ dht_free(dht_t *dht) {
 }
 
 int
+dht_get(dht_t *dht, unsigned char *key, dht_get_callback cb) {
+  return 0;
+}
+
+int
 dht_recv(dht_t *dht, char *data, int length, unsigned char node_id[32]) {
   switch(op){
     case DHT_PING:
       dht_node_t* node = dht_find_node(dht, node_id);
-      if(node == NULL) return 1;
+      if(node == NULL) return -1;
       dht_node_update(node);
       dht->send(dht, DHT_PONG, NULL, 0, node);
-      return 0;
+      return 1;
     case DHT_FIND_NODES:
-      dht_node_t* node = dht_find_node(dht, node_id);
-      if(node == NULL) return 1;
+      // todo: implement nearest_nodes and send
+      dht_node_list_t* nodes = dht_find_nearest_nodes(dht, node_id, 10);
+      if(nodes == NULL) return -1;
       dht->send(dht, DHT_NODES, node, sizeof(node), node);
-      return 0;
+      return nodes->length;
+    case DHT_ANNOUNCE:
+      // add to dht
+      return 1;
     default:
       return -1;
   }
