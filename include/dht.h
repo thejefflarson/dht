@@ -4,8 +4,6 @@
 struct dht_bucket_t;
 struct dht_queue_t;
 
-
-
 typedef struct dht_t {
   struct dht_queue_t *queue;
   struct dht_bucket_t *bucket;
