@@ -3,13 +3,11 @@
 
 def options(opt):
     opt.load('compiler_c')
-    opt.load('ragel', tooldir = 'tools')
 
 def configure(conf):
     conf.load('compiler_c')
     conf.env.append_unique('CFLAGS', ['-std=c99', '-Wall', '-Wextra', '-Werror', '-pedantic', '-Wno-error=unused-const-variable', '-g'])
     conf.env.append_value('INCLUDES', ['include'])
-    conf.load('ragel', tooldir = 'tools')
 
 
 def build(bld):
@@ -38,12 +36,4 @@ def build(bld):
         install_path=None
     )
 
-    bld.program(
-        features='c',
-        source='test/test_protocol.c',
-        includes=['src', 'includes'],
-        use='dht',
-        target='test_protocol',
-        install_path=None
-    )
 
