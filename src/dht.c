@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <string.h>
 #include "dht.h"
 #include "dht_node.h"
 #include "dht_bucket.h"
@@ -19,7 +20,7 @@ dht_new(){
 
 void
 dht_free(dht_t *dht) {
-  free(dht)
+  free(dht);
 }
 
 int
@@ -57,7 +58,7 @@ static struct _find_state {
 
 static int
 _find_walker(void *ctx, dht_bucket_t *root){
-  struct _find_state *state = *ctx;
+  struct _find_state *state = ctx;
   unsigned char adelta[32], bdelta[32];
 
   for(int i = 0; i < root->length; i++){
@@ -78,9 +79,9 @@ dht_find_node(dht_t *dht, unsigned char key[32]) {
   struct _find_state state;
 
   state.current = dht->bucket->nodes[0];
-  state.target = key;
+  memcpy(state.target, key, 32);
 
-  dht_bucket_walk((void *) &min, dht->root, _find_walker);
+  dht_bucket_walk((void *) &state, dht->root, _find_walker);
 
-  return min;
+  return state.current;
 }
