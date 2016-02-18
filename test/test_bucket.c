@@ -25,7 +25,7 @@ test_bucket_insert(){
   int ins = 0;
   struct sockaddr_storage st;
   for(int i = 0; i < 2048; i++){
-    unsigned char buf[32];
+    uint8_t buf[32];
     random_bytes(buf, 32);
     dht_node_t *node = dht_node_new(buf, &st);
     dht_bucket_t *nins = dht_bucket_insert(bucket, node);

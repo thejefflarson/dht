@@ -20,13 +20,13 @@ dht_t *
 dht_new();
 
 int
-dht_recv(dht_t *dht, uint8_t *data, size_t length, uint8_t node_id[DHT_HASH_SIZE]);
+dht_run(dht_t *dht, uint8_t *data, size_t length, struct sockaddr from, size_t from_length);
 
 typedef void
-(*dht_get_callback)(void *ctx, uint8_t node_id[DHT_HASH_SIZE], uint8_t data, size_t length);
+(*dht_get_callback)(void *closure, uint8_t node_id[DHT_HASH_SIZE], uint8_t *data, size_t length);
 
 int
-dht_get(dht_t *dht, uint8_t *key, dht_get_callback cb);
+dht_get(dht_t *dht, uint8_t *key, dht_get_callback cb, void *closure);
 
 int
 dht_set(dht_t *dht, void *data, size_t len);

@@ -1,10 +1,8 @@
-#ifndef DHT_UTIL_H_
-#define DHT_UTIL_H_
+#pragma once
+#include <stdint.h>
 
 void
-dht_xor(unsigned char[32], unsigned char[32], unsigned char[32]);
+dht_xor(uint8_t[32], uint8_t[32], uint8_t[32]);
 
 int
-dht_compare(unsigned char[32], unsigned char[32]);
-
-#endif
+dht_compare(uint8_t[32], uint8_t[32]);
