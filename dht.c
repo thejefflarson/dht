@@ -33,7 +33,6 @@ typedef struct dh_node_t {
   struct sockaddr_storage address;
 } node_t;
 
-
 void
 node_update(node_t *node){
   time(&node->last_heard);
@@ -61,6 +60,19 @@ node_free(node_t *node){
 bool
 node_good(node_t *node){
   return time(NULL) - node->last_heard < 1500;
+}
+
+int
+node_sort(const void* a, const void *b) {
+  node_t *aa = * (node_t * const *) a;
+  node_t *bb = * (node_t * const *) b;
+  if(aa->last_heard > bb->last_heard) {
+    return 1;
+  } else if (aa->last_heard < bb->last_heard) {
+    return -1;
+  } else {
+    return 0;
+  }
 }
 
 typedef struct bucket_t {
@@ -157,7 +169,6 @@ bucket_insert(bucket_t *root, node_t *node) {
   return root;
 }
 
-// TODO: make non-recursive
 typedef int (*bucket_walk_callback)(void *ctx, bucket_t *root);
 void
 bucket_walk(void *ctx, bucket_t *root, bucket_walk_callback cb) {
@@ -178,6 +189,7 @@ bucket_update_walker(void *ctx, bucket_t *root){
       root->length--;
     }
   }
+  qsort(root->nodes, root->length, sizeof(node_t *), node_sort);
   return 0;
 }
 
@@ -199,11 +211,45 @@ bucket_free(bucket_t *root) {
 }
 
 
-struct dht_s {
-  struct dht_queue_t *queue;
-  struct bucket_t *bucket;
-  int (*send)(struct dht_s *dht, uint8_t *data, size_t length, uint8_t node_id[DHT_HASH_SIZE]);
+struct _find_state {
+  uint8_t target[32];
+  node_t *current;
 };
+
+static int
+find_walker(void *ctx, bucket_t *root){
+  struct _find_state *state = ctx;
+  uint8_t adelta[32], bdelta[32];
+
+  for(int i = 0; i < root->length; i++){
+    xor(adelta, state->target, root->nodes[i]->id);
+    xor(bdelta, state->target, state->current->id);
+
+    if(compare(adelta, bdelta) == -1)
+      state->current = root->nodes[i];
+  }
+
+  return 0;
+}
+
+// all that for these:
+struct dht_s {
+  struct bucket_t *bucket;
+};
+
+node_t *
+find_node(dht_t *dht, uint8_t key[32]) {
+  if(dht->bucket->length == 0) return NULL;
+
+  struct _find_state state;
+
+  state.current = dht->bucket->nodes[0];
+  memcpy(state.target, key, 32);
+
+  bucket_walk((void *) &state, dht->bucket, find_walker);
+
+  return state.current;
+}
 
 dht_t *
 dht_new(){
@@ -251,39 +297,4 @@ dht_run(dht_t *dht) {
   //   default:
   //     return -1;
   // }
-}
-
-struct _find_state {
-  uint8_t target[32];
-  node_t *current;
-};
-
-static int
-_find_walker(void *ctx, bucket_t *root){
-  struct _find_state *state = ctx;
-  uint8_t adelta[32], bdelta[32];
-
-  for(int i = 0; i < root->length; i++){
-    xor(adelta, state->target, root->nodes[i]->id);
-    xor(bdelta, state->target, state->current->id);
-
-    if(compare(adelta, bdelta) == -1)
-      state->current = root->nodes[i];
-  }
-
-  return 0;
-}
-
-node_t *
-dht_find_node(dht_t *dht, uint8_t key[32]) {
-  if(dht->bucket->length == 0) return NULL;
-
-  struct _find_state state;
-
-  state.current = dht->bucket->nodes[0];
-  memcpy(state.target, key, 32);
-
-  bucket_walk((void *) &state, dht->bucket, _find_walker);
-
-  return state.current;
 }
