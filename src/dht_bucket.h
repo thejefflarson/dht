@@ -1,6 +1,4 @@
-#ifndef DHT_BUCKET_H_
-#define DHT_BUCKET_H_
-
+#pragma once
 #include <stdint.h>
 #include "dht_node.h"
 
@@ -28,5 +26,3 @@ dht_bucket_update(dht_bucket_t *root);
 
 void
 dht_bucket_free(dht_bucket_t *root);
-
-#endif
