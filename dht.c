@@ -7,7 +7,6 @@
 
 #include "dht.h"
 
-
 static void
 xor(uint8_t target[32], uint8_t a[32], uint8_t b[32]) {
   for(int i = 0; i < 32; i++) {
@@ -162,8 +161,9 @@ bucket_insert(bucket_t *root, node_t *node) {
 typedef int (*bucket_walk_callback)(void *ctx, bucket_t *root);
 void
 bucket_walk(void *ctx, bucket_t *root, bucket_walk_callback cb) {
-  if(cb(ctx, root) == 0 && root->next != NULL)
-    bucket_walk(ctx, root->next, cb);
+  while(cb(ctx, root) == 0 && root->next != NULL) {
+    root = root->next;
+  }
 }
 
 static int
