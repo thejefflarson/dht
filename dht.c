@@ -183,8 +183,7 @@ bucket_update_walker(void *ctx, bucket_t *root){
   for(int i = 0; i < root->length; i++){
     if(!node_good(root->nodes[i])){
       node_free(root->nodes[i]);
-      if(i + 1 < root->length)
-        memmove(root->nodes + i, root->nodes + i + 1, sizeof(node_t *) * (root->length - i - 1));
+      memmove(root->nodes + i, root->nodes + i + 1, sizeof(node_t *) * (root->length - i - 1));
       i--;
       root->length--;
     }
@@ -209,7 +208,6 @@ bucket_free(bucket_t *root) {
     free(b);
   }
 }
-
 
 struct _find_state {
   uint8_t target[32];
@@ -267,6 +265,7 @@ dht_new(){
 
 void
 dht_free(dht_t *dht) {
+  bucket_free(dht->bucket);
   free(dht);
 }
 

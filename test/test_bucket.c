@@ -23,8 +23,8 @@ test_bucket_insert(){
   bucket_t *bucket = bucket_new(0, 255);
   ok(bucket != NULL, "bucket is not null");
   int ins = 0;
-  struct sockaddr_storage st;
-  for(int i = 0; i < 2048; i++){
+  struct sockaddr_storage st = {0};
+  for(int i = 0; i < 100; i++){
     uint8_t buf[32];
     random_bytes(buf, 32);
     node_t *node = node_new(buf, &st);
@@ -41,9 +41,26 @@ test_bucket_insert(){
   ok(j == ins, "right number of nodes inserted");
 }
 
+static void
+test_bucket_update(){
+  bucket_t *bucket = bucket_new(0, 255);
+  struct sockaddr_storage st = {0};
+  int j = 0;
+  uint8_t buf[32];
+  random_bytes(buf, 32);
+  node_t *node = node_new(buf, &st);
+  bucket_insert(bucket, node);
+  node->last_heard = 0;
+  bucket_update(bucket);
+  bucket_walk(&j, bucket, _walker);
+  ok(j == 0, "old nodes should be removed");
+  bucket_free(bucket);
+}
+
 int
 main(){
   start_test;
   test_bucket();
   test_bucket_insert();
+  test_bucket_update();
 }
