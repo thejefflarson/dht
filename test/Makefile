@@ -2,20 +2,25 @@ SOURCES = $(shell ls test_*.c)
 TESTS = $(basename $(SOURCES))
 
 all: $(TESTS)
-coverage: coverage/index.html
+test: coverage/index.html
 
 $(TESTS): %: %.c ../dht.c ../dht.h tap.h util.h Makefile
-	cc $< -Wall -g --coverage -fprofile-arcs -ftest-coverage -fsanitize=address -fno-omit-frame-pointer -o $@
-	./$@
+	cc $< -Wall -g -fprofile-arcs -ftest-coverage -fsanitize=address -fno-omit-frame-pointer -o $@
 
-coverage/index.html: $(TESTS)
-	lcov --capture --directory . --output-file coverage.info
-	rm *.gcno
-	rm *.gcda
-	rm coverage.info
+%.gcda: %
+	./$<
+
+coverage.info: $(addsuffix .gcda, $(TESTS))
+	lcov --capture --directory . --output-file $@
+
+coverage/index.html: coverage.info
+	genhtml -o coverage $<
 
 clean:
 	rm $(TESTS)
 	rm -rf coverage
+	rm -f *.gcno
+	rm -f *.gcda
+	rm -f coverage.info
 
 .PHONY: all clean coverage
