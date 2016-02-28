@@ -1,4 +1,5 @@
 .DS_Store
 test/test_bucket
 test/test_dht
+test/coverage
 *.dSYM

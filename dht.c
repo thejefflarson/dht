@@ -33,12 +33,12 @@ typedef struct dh_node_t {
   struct sockaddr_storage address;
 } node_t;
 
-void
+static void
 node_update(node_t *node){
   time(&node->last_heard);
 }
 
-node_t *
+static node_t *
 node_new(const uint8_t id[32], const struct sockaddr_storage *address) {
   node_t* node = calloc(1, sizeof(node_t));
 
@@ -52,17 +52,17 @@ node_new(const uint8_t id[32], const struct sockaddr_storage *address) {
   return node;
 }
 
-void
+static void
 node_free(node_t *node){
   free(node);
 }
 
-bool
+static bool
 node_good(node_t *node){
   return time(NULL) - node->last_heard < 1500;
 }
 
-int
+static int
 node_sort(const void* a, const void *b) {
   node_t *aa = * (node_t * const *) a;
   node_t *bb = * (node_t * const *) b;
@@ -98,7 +98,7 @@ bucket_mid(bucket_t* root){
   return (root->upper_limit - root->lower_limit) / 2 + root->lower_limit;
 }
 
-bucket_t*
+static bucket_t*
 bucket_new(uint8_t lower, uint8_t upper) {
   bucket_t* bucket = calloc(1, sizeof(bucket_t));
   if(bucket == NULL)
@@ -109,7 +109,7 @@ bucket_new(uint8_t lower, uint8_t upper) {
   return bucket;
 }
 
-bucket_t*
+static bucket_t*
 bucket_insert(bucket_t *root, node_t *node);
 
 static bool
@@ -141,10 +141,10 @@ bucket_split(bucket_t *root){
   return false;
 }
 
-void
+static void
 bucket_update(bucket_t *root);
 
-bucket_t*
+static bucket_t*
 bucket_insert(bucket_t *root, node_t *node) {
   while(root != NULL && !bucket_contains(root, node))
     root = root->next;
@@ -170,7 +170,7 @@ bucket_insert(bucket_t *root, node_t *node) {
 }
 
 typedef int (*bucket_walk_callback)(void *ctx, bucket_t *root);
-void
+static void
 bucket_walk(void *ctx, bucket_t *root, bucket_walk_callback cb) {
   while(cb(ctx, root) == 0 && root->next != NULL) {
     root = root->next;
@@ -193,12 +193,12 @@ bucket_update_walker(void *ctx, bucket_t *root){
   return 0;
 }
 
-void
+static void
 bucket_update(bucket_t *root) {
   bucket_walk(NULL, root, bucket_update_walker);
 }
 
-void
+static void
 bucket_free(bucket_t *root) {
   bucket_t *b;
   while(root != NULL) {
@@ -237,7 +237,7 @@ struct dht_s {
   struct bucket_t *bucket;
 };
 
-node_t *
+static node_t *
 find_node(dht_t *dht, uint8_t key[32]) {
   if(dht->bucket->length == 0) return NULL;
 
