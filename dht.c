@@ -1,9 +1,14 @@
+#include <errno.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <time.h>
 #include <stdbool.h>
 #include <stdint.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <sys/types.h>
 
 #include "dht.h"
 
@@ -232,6 +237,7 @@ find_walker(void *ctx, bucket_t *root){
 
 // all that for these:
 struct dht_s {
+  int socket;
   struct bucket_t *bucket;
 };
 
@@ -249,24 +255,46 @@ find_node(dht_t *dht, uint8_t key[32]) {
   return state.current;
 }
 
-dht_t *
-dht_new(){
-  dht_t *dht = calloc(1, sizeof(dht_t));
-  if(dht == NULL) return NULL;
-
+int
+dht_init(dht_t *dht, int port){
   dht->bucket = bucket_new(0, 255);
   if(dht->bucket == NULL) {
-    free(dht);
-    return NULL;
+    goto error;
   }
 
-  return dht;
+  struct addrinfo hints = {0}, *res;
+  hints.ai_family = AF_UNSPEC;
+  hints.ai_socktype = SOCK_DGRAM;
+  hints.ai_flags = AI_PASSIVE;
+  char cport[6] = {0};
+  snprintf(cport, 6, "%i", port);
+  int error = getaddrinfo(NULL, cport, &hints, &res);
+  if(error) {
+    errno = error;
+    bucket_free(dht->bucket);
+    return -2;
+  }
+
+  dht->socket = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+  if(dht->socket == -1) {
+    goto cleanup;
+  }
+
+  if(bind(dht->socket, res->ai_addr, res->ai_addrlen) == -1) {
+    goto cleanup;
+  }
+
+  return 0;
+cleanup:
+  bucket_free(dht->bucket);
+error:
+  return -1;
 }
 
 void
-dht_free(dht_t *dht) {
+dht_close(dht_t *dht) {
   bucket_free(dht->bucket);
-  free(dht);
+  close(dht->socket);
 }
 
 int
