@@ -242,13 +242,13 @@ struct dht_s {
 };
 
 static node_t *
-find_node(dht_t *dht, uint8_t key[32]) {
+find_node(dht_t *dht, uint8_t key[DHT_HASH_SIZE]) {
   if(dht->bucket->length == 0) return NULL;
 
   struct _find_state state;
 
   state.current = dht->bucket->nodes[0];
-  memcpy(state.target, key, 32);
+  memcpy(state.target, key, DHT_HASH_SIZE);
 
   bucket_walk((void *) &state, dht->bucket, find_walker);
 
@@ -298,7 +298,8 @@ dht_close(dht_t *dht) {
 }
 
 int
-dht_get(dht_t *dht, uint8_t *key, dht_get_callback cb, void *closure) {
+dht_get(dht_t *dht, uint8_t key[32], dht_get_callback cb, void *closure) {
+  
   return 0;
 }
 

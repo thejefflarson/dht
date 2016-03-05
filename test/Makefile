@@ -1,10 +1,11 @@
 SOURCES = $(shell ls test_*.c)
 TESTS = $(basename $(SOURCES))
+CC ?= clang
 
 test: coverage/index.html
 
 $(TESTS): %: %.c ../dht.c ../dht.h tap.h util.h Makefile
-	cc $< -Wall -g -fprofile-arcs -ftest-coverage -fsanitize=address -fno-omit-frame-pointer -o $@
+	$(CC) $< -Wall -g -fprofile-arcs -ftest-coverage -fsanitize=address -fno-omit-frame-pointer -o $@
 
 %.gcno: %
 	./$<

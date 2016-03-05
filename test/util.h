@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <stdint.h>
 
 void
 random_bytes(uint8_t *buf, size_t size){
