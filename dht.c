@@ -1,4 +1,5 @@
 #include <errno.h>
+#include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <time.h>
@@ -12,6 +13,15 @@
 #include <unistd.h>
 
 #include "dht.h"
+
+static void
+random_bytes(uint8_t *buf, size_t size){
+  int f = open("/dev/urandom", O_RDONLY);
+  if(!f) exit(1);
+  read(f, buf, size);
+  close(f);
+}
+
 
 static void
 xor(uint8_t target[32], uint8_t a[32], uint8_t b[32]) {
@@ -236,9 +246,21 @@ find_walker(void *ctx, bucket_t *root){
   return 0;
 }
 
+typedef struct {
+  uint8_t token[DHT_HASH_SIZE];
+  time_t sent;
+  void* data;
+  dht_get_callback success;
+  dht_failure_callback error;
+} search;
+
+
+#define MAX_SEARCH 1024
 // all that for these:
 struct dht_s {
   int socket;
+  search searches[MAX_SEARCH];
+  uint16_t search_len;
   struct bucket_t *bucket;
 };
 
@@ -299,8 +321,17 @@ dht_close(dht_t *dht) {
 }
 
 int
-dht_get(dht_t *dht, uint8_t key[32], dht_get_callback cb, void *closure) {
-  
+dht_get(dht_t *dht, uint8_t key[32], dht_get_callback success, dht_failure_callback error, void *closure) {
+  node_t *node = find_node(dht, key);
+  if(!node) return -1;
+  search *to_search = &dht->searches[dht->search_len];
+  random_bytes(to_search->token, DHT_HASH_SIZE);
+  to_search->success = success;
+  to_search->error = error;
+  time(&to_search->sent);
+  to_search->data = closure;
+  // send request
+  dht->search_len++;
   return 0;
 }
 

@@ -1,4 +1,3 @@
-#include "util.h"
 #include "../dht.c"
 #include "tap.h"
 

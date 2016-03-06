@@ -14,8 +14,11 @@ dht_init(dht_t *dht, int port);
 typedef void
 (*dht_get_callback)(void *closure, uint8_t node_id[DHT_HASH_SIZE], uint8_t *data, size_t length);
 
+typedef void
+(*dht_failure_callback)(void *closure);
+
 int
-dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE], dht_get_callback cb, void *closure);
+dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE], dht_get_callback success, dht_failure_callback error, void *closure);
 
 int
 dht_set(dht_t *dht, void *data, size_t len);

@@ -4,7 +4,7 @@ CC ?= clang
 
 test: coverage/index.html
 
-$(TESTS): %: %.c ../dht.c ../dht.h tap.h util.h Makefile
+$(TESTS): %: %.c ../dht.c ../dht.h tap.h Makefile
 	$(CC) $< -Wall -g -fprofile-arcs -ftest-coverage -fsanitize=address -fno-omit-frame-pointer -o $@
 
 %.gcno: %
