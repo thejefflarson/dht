@@ -12,6 +12,8 @@
 #include <sys/types.h>
 #include <unistd.h>
 
+#include "vendor/cmp.h"
+
 #include "dht.h"
 
 static void
@@ -247,6 +249,24 @@ find_walker(void *ctx, bucket_t *root){
 }
 
 typedef struct {
+  uint8_t *buf;
+  size_t size;
+  size_t offset;
+} string_t;
+
+static size_t
+write_buf(cmp_ctx_t *ctx, const void *data, size_t count) {
+  string_t *string = ctx->buf;
+  if(count + string->offset < string->size) {
+    memcpy(string->buf + string->offset, data, count);
+    string->offset += count;
+    return count;
+  }
+  return -1;
+}
+
+
+typedef struct {
   uint8_t token[DHT_HASH_SIZE];
   time_t sent;
   void* data;
@@ -330,9 +350,12 @@ dht_get(dht_t *dht, uint8_t key[32], dht_get_callback success, dht_failure_callb
   to_search->error = error;
   time(&to_search->sent);
   to_search->data = closure;
-  // send request
   dht->search_len++;
-  return 0;
+
+
+
+
+  return send(dht->socket, data, length, node->address);
 }
 
 int
