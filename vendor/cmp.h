@@ -26,6 +26,7 @@ THE SOFTWARE.
 #define CMP_H__
 #include <sys/types.h>
 #include <stdint.h>
+#include <stdbool.h>
 
 struct cmp_ctx_s;
 

@@ -249,24 +249,6 @@ find_walker(void *ctx, bucket_t *root){
 }
 
 typedef struct {
-  uint8_t *buf;
-  size_t size;
-  size_t offset;
-} string_t;
-
-static size_t
-write_buf(cmp_ctx_t *ctx, const void *data, size_t count) {
-  string_t *string = ctx->buf;
-  if(count + string->offset < string->size) {
-    memcpy(string->buf + string->offset, data, count);
-    string->offset += count;
-    return count;
-  }
-  return -1;
-}
-
-
-typedef struct {
   uint8_t token[DHT_HASH_SIZE];
   time_t sent;
   void* data;
@@ -340,8 +322,14 @@ dht_close(dht_t *dht) {
   close(dht->socket);
 }
 
+typedef struct {
+  char type;
+  uint32_t token[DHT_HASH_SIZE];
+  uint32_t key[DHT_HASH_SIZE];
+} __attribute__((packed)) get_request_t;
+
 int
-dht_get(dht_t *dht, uint8_t key[32], dht_get_callback success, dht_failure_callback error, void *closure) {
+dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE], dht_get_callback success, dht_failure_callback error, void *closure) {
   node_t *node = find_node(dht, key);
   if(!node) return -1;
   search *to_search = &dht->searches[dht->search_len];
@@ -352,10 +340,13 @@ dht_get(dht_t *dht, uint8_t key[32], dht_get_callback success, dht_failure_callb
   to_search->data = closure;
   dht->search_len++;
 
+  get_request_t get = { .type = 'r' };
+  memcpy(get.token, to_search->token, DHT_HASH_SIZE);
+  memcpy(get.key, key, DHT_HASH_SIZE);
 
+  int ret = sendto(dht->socket, &get, sizeof(get), 0, (sruct sockaddr *)&node->address, sizeof(node->address));
 
-
-  return send(dht->socket, data, length, node->address);
+  return ret;
 }
 
 int
