@@ -326,12 +326,13 @@ typedef struct {
   char type;
   uint32_t token[DHT_HASH_SIZE];
   uint32_t key[DHT_HASH_SIZE];
-} __attribute__((packed)) get_request_t;
+} __attribute__((packed)) request_t;
 
 int
 dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE], dht_get_callback success, dht_failure_callback error, void *closure) {
   node_t *node = find_node(dht, key);
   if(!node) return -1;
+  if(dht->search_len + 1 >= MAX_SEARCH) return -1;
   search *to_search = &dht->searches[dht->search_len];
   random_bytes(to_search->token, DHT_HASH_SIZE);
   to_search->success = success;
@@ -340,13 +341,27 @@ dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE], dht_get_callback success, dht_fa
   to_search->data = closure;
   dht->search_len++;
 
-  get_request_t get = { .type = 'r' };
+  request_t get = { .type = 'g' };
   memcpy(get.token, to_search->token, DHT_HASH_SIZE);
   memcpy(get.key, key, DHT_HASH_SIZE);
 
-  int ret = sendto(dht->socket, &get, sizeof(get), 0, (sruct sockaddr *)&node->address, sizeof(node->address));
+  int ret = sendto(dht->socket, &get, sizeof(get), 0, (struct sockaddr *)&node->address, sizeof(node->address));
 
   return ret;
+}
+
+typedef struct {
+  char type;
+  uint32_t token[DHT_HASH_SIZE];
+  uint32_t key[DHT_HASH_SIZE];
+} __attribute__((packed)) set_request_t;
+
+int
+dht_set(dht_t *dht, void *data, size_t len) {
+
+  request_t set = { .type = 's' };
+
+  return -1;
 }
 
 int
