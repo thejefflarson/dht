@@ -344,23 +344,33 @@ get_search(dht_t *dht, dht_get_callback success, dht_failure_callback error, voi
 }
 
 int
+compress_and_send(const dht_t *dht, const node_t *node, const uint8_t *buf, const size_t len) {
+  uint8_t *comp = (uint8_t *) calloc(1, len);
+  if(!comp) return -1;
+  size_t length;
+  int ret = compress(comp, &length, buf, len); 
+  if(ret != Z_OK) {
+    free(comp);
+    return -1;
+  }
+  
+  ret = sendto(dht->socket, comp, length, 0, (struct sockaddr *)&node->address, sizeof(node->address));
+  free(comp);
+  return ret;
+};
+
+int
 dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE], dht_get_callback success, dht_failure_callback error, void *closure) {
   node_t *node = find_node(dht, key);
   if(!node) return -1;
   search_t *to_search = get_search(dht, success, error, closure);
   if(!to_search) return -1;
+  
   request_t get = { .type = 'g' };
   memcpy(get.token, to_search->token, DHT_HASH_SIZE);
   memcpy(get.key, key, DHT_HASH_SIZE);
 
-  uint8_t buf[sizeof(request_t)] = {0};
-  size_t length;
-  int ret = compress(buf, &length, (const unsigned char *)&get, sizeof(request_t)); 
-  if(ret != Z_OK) return -1;
-  
-  ret = sendto(dht->socket, &buf, length, 0, (struct sockaddr *)&node->address, sizeof(node->address));
-
-  return ret;
+  return compress_and_send(dht, node, (uint8_t *)&get, sizeof(get));
 }
 
 int
@@ -377,9 +387,13 @@ dht_set(dht_t *dht, void *data, size_t len, dht_get_callback success, dht_failur
   memcpy(set.token, to_search->token, DHT_HASH_SIZE);
   memcpy(set.key, key, DHT_HASH_SIZE);
 
-  // uint8_t buf[sizeof(request_t) + len] = {0};
-
-  return 0;
+  uint8_t *buf = calloc(1, sizeof(set) + len);
+  if(buf == NULL) return -1;
+  memcpy(buf, &set, sizeof(set));
+  memcpy(buf + sizeof(set), data, len);
+  ret = compress_and_send(dht, node, buf, sizeof(set) + len);
+  free(buf);
+  return ret;
 }
 
 int
