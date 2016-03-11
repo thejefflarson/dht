@@ -21,7 +21,7 @@ int
 dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE], dht_get_callback success, dht_failure_callback error, void *closure);
 
 int
-dht_set(dht_t *dht, void *data, size_t len);
+dht_set(dht_t *dht, void *data, size_t len, dht_get_callback success, dht_failure_callback error, void *closure);
 
 int
 dht_run(dht_t *dht);

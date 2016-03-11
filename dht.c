@@ -11,8 +11,9 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <unistd.h>
+#include <zlib.h>
 
-#include "vendor/cmp.h"
+#include "vendor/blake2.h"
 
 #include "dht.h"
 
@@ -254,7 +255,7 @@ typedef struct {
   void* data;
   dht_get_callback success;
   dht_failure_callback error;
-} search;
+} search_t;
 
 
 #define MAX_SEARCH 1024
@@ -328,40 +329,57 @@ typedef struct {
   uint32_t key[DHT_HASH_SIZE];
 } __attribute__((packed)) request_t;
 
-int
-dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE], dht_get_callback success, dht_failure_callback error, void *closure) {
-  node_t *node = find_node(dht, key);
-  if(!node) return -1;
-  if(dht->search_len + 1 >= MAX_SEARCH) return -1;
-  search *to_search = &dht->searches[dht->search_len];
+
+search_t *
+get_search(dht_t *dht, dht_get_callback success, dht_failure_callback error, void *closure) {
+  if(dht->search_len + 1 >= MAX_SEARCH) return NULL;
+  search_t *to_search = &dht->searches[dht->search_len];
   random_bytes(to_search->token, DHT_HASH_SIZE);
   to_search->success = success;
   to_search->error = error;
   time(&to_search->sent);
   to_search->data = closure;
   dht->search_len++;
+  return to_search;
+}
 
+int
+dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE], dht_get_callback success, dht_failure_callback error, void *closure) {
+  node_t *node = find_node(dht, key);
+  if(!node) return -1;
+  search_t *to_search = get_search(dht, success, error, closure);
+  if(!to_search) return -1;
   request_t get = { .type = 'g' };
   memcpy(get.token, to_search->token, DHT_HASH_SIZE);
   memcpy(get.key, key, DHT_HASH_SIZE);
 
-  int ret = sendto(dht->socket, &get, sizeof(get), 0, (struct sockaddr *)&node->address, sizeof(node->address));
+  uint8_t buf[sizeof(request_t)] = {0};
+  size_t length;
+  int ret = compress(buf, &length, (const unsigned char *)&get, sizeof(request_t)); 
+  if(ret != Z_OK) return -1;
+  
+  ret = sendto(dht->socket, &buf, length, 0, (struct sockaddr *)&node->address, sizeof(node->address));
 
   return ret;
 }
 
-typedef struct {
-  char type;
-  uint32_t token[DHT_HASH_SIZE];
-  uint32_t key[DHT_HASH_SIZE];
-} __attribute__((packed)) set_request_t;
-
 int
-dht_set(dht_t *dht, void *data, size_t len) {
+dht_set(dht_t *dht, void *data, size_t len, dht_get_callback success, dht_failure_callback error, void *closure) {
+  uint8_t key[DHT_HASH_SIZE] = {0};
+  int ret = blake2(key, data, NULL, DHT_HASH_SIZE, len, 0);
+  if(ret == -1) return ret;
+  node_t *node = find_node(dht, key);
+  if(!node) return -1;
+  search_t *to_search = get_search(dht, success, error, closure);
+  if(!to_search) return -1;
 
   request_t set = { .type = 's' };
+  memcpy(set.token, to_search->token, DHT_HASH_SIZE);
+  memcpy(set.key, key, DHT_HASH_SIZE);
 
-  return -1;
+  // uint8_t buf[sizeof(request_t) + len] = {0};
+
+  return 0;
 }
 
 int
