@@ -262,7 +262,7 @@ typedef struct {
 // all that for these:
 struct dht_s {
   int socket;
-  search searches[MAX_SEARCH];
+  search_t searches[MAX_SEARCH];
   uint16_t search_len;
   struct bucket_t *bucket;
 };
