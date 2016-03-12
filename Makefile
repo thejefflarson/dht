@@ -2,19 +2,22 @@ CC = clang
 EXTRA ?= 
 CFLAGS = $(shell pkg-config --cflags zlib) -fPIC $(EXTRA)
 LDFLAGS = $(shell pkg-config --libs zlib) -shared
-TARGET_LIB = build/libdht.so
-
+DYNAMIC = build/libdht.so
+STATIC = build/libdht.a
 SRCS = dht.c vendor/blake2b-ref.c #vendor/tweetnacl.c
 OBJS = $(SRCS:.c=.o)
 
 .PHONY: all
-all: build ${TARGET_LIB}
+all: build ${DYNAMIC} ${STATIC}
 
 build:
 	mkdir build
 
-$(TARGET_LIB): $(OBJS)
+$(DYNAMIC): $(OBJS)
 	$(CC) ${LDFLAGS} -o $@ $^
+
+$(STATIC): $(OBJS)
+	ar rcs $@ $^
 
 $(SRCS:.c=.d):%.d:%.c
 	$(CC) $(CFLAGS) -MM $< >$@
@@ -22,7 +25,7 @@ $(SRCS:.c=.d):%.d:%.c
 include $(SRCS:.c=.d)
 
 clean:
-	rm -f ${TARGET_LIB} ${OBJS} $(SRCS:.c=.d)
+	rm -f ${DYNAMIC} ${OBJS} $(SRCS:.c=.d)
 	rm -r build
 
 .PHONY: clean
