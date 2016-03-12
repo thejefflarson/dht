@@ -18,6 +18,54 @@
 
 #include "dht.h"
 
+typedef struct dh_node_t {
+  uint8_t id[DHT_HASH_SIZE];
+  time_t created_at;
+  time_t last_heard;
+  struct sockaddr_storage address;
+} node_t;
+
+typedef struct bucket_t {
+  node_t* nodes[8];
+  int length;
+  uint8_t upper_limit;
+  uint8_t lower_limit;
+  struct bucket_t *next;
+} bucket_t;
+
+typedef struct {
+  uint8_t token[DHT_HASH_SIZE];
+  time_t sent;
+  void* data;
+  dht_get_callback success;
+  dht_failure_callback error;
+} search_t;
+
+#define MAX_SEARCH 1024
+struct dht_s {
+  int socket;
+  uint8_t id[DHT_HASH_SIZE];
+  search_t searches[MAX_SEARCH];
+  uint16_t search_idx[MAX_SEARCH];
+  uint16_t search_len;
+  struct bucket_t *bucket;
+};
+
+typedef struct {
+  char type;
+  uint8_t token[DHT_HASH_SIZE];
+  uint8_t key[DHT_HASH_SIZE];
+  uint8_t id[DHT_HASH_SIZE];
+} __attribute__((packed)) request_t;
+
+typedef struct {
+  uint8_t target[DHT_HASH_SIZE];
+  node_t *current;
+} find_state_t;
+
+typedef int (*bucket_walk_callback)(void *ctx, bucket_t *root);
+
+
 static void
 random_bytes(uint8_t *buf, size_t size){
   int f = open("/dev/urandom", O_RDONLY);
@@ -25,7 +73,6 @@ random_bytes(uint8_t *buf, size_t size){
   read(f, buf, size);
   close(f);
 }
-
 
 static void
 xor(uint8_t target[DHT_HASH_SIZE], uint8_t a[DHT_HASH_SIZE], uint8_t b[DHT_HASH_SIZE]) {
@@ -45,13 +92,6 @@ compare(uint8_t a[DHT_HASH_SIZE], uint8_t b[DHT_HASH_SIZE]){
   }
   return 0;
 }
-
-typedef struct dh_node_t {
-  uint8_t id[DHT_HASH_SIZE];
-  time_t created_at;
-  time_t last_heard;
-  struct sockaddr_storage address;
-} node_t;
 
 static void
 node_update(node_t *node){
@@ -94,14 +134,6 @@ node_sort(const void* a, const void *b) {
     return 0;
   }
 }
-
-typedef struct bucket_t {
-  node_t* nodes[8];
-  int length;
-  uint8_t upper_limit;
-  uint8_t lower_limit;
-  struct bucket_t *next;
-} bucket_t;
 
 static bool
 bucket_contains(bucket_t *root, node_t *node){
@@ -189,7 +221,6 @@ bucket_insert(bucket_t *root, node_t *node) {
   return root;
 }
 
-typedef int (*bucket_walk_callback)(void *ctx, bucket_t *root);
 static void
 bucket_walk(void *ctx, bucket_t *root, bucket_walk_callback cb) {
   while(cb(ctx, root) == 0 && root->next != NULL) {
@@ -229,14 +260,9 @@ bucket_free(bucket_t *root) {
   }
 }
 
-struct _find_state {
-  uint8_t target[DHT_HASH_SIZE];
-  node_t *current;
-};
-
 static int
 find_walker(void *ctx, bucket_t *root){
-  struct _find_state *state = ctx;
+  find_state_t *state = ctx;
   uint8_t adelta[DHT_HASH_SIZE], bdelta[DHT_HASH_SIZE];
 
   for(int i = 0; i < root->length; i++){
@@ -250,29 +276,11 @@ find_walker(void *ctx, bucket_t *root){
   return 0;
 }
 
-typedef struct {
-  uint8_t token[DHT_HASH_SIZE];
-  time_t sent;
-  void* data;
-  dht_get_callback success;
-  dht_failure_callback error;
-} search_t;
-
-#define MAX_SEARCH 1024
-// all that for these:
-struct dht_s {
-  int socket;
-  uint8_t id[DHT_HASH_SIZE];
-  search_t searches[MAX_SEARCH];
-  uint16_t search_len;
-  struct bucket_t *bucket;
-};
-
 static node_t *
 find_node(dht_t *dht, uint8_t key[DHT_HASH_SIZE]) {
   if(dht->bucket->length == 0) return NULL;
 
-  struct _find_state state;
+  find_state_t state;
 
   state.current = dht->bucket->nodes[0];
   memcpy(state.target, key, DHT_HASH_SIZE);
@@ -284,6 +292,9 @@ find_node(dht_t *dht, uint8_t key[DHT_HASH_SIZE]) {
 
 int
 dht_init(dht_t *dht, int port){
+  dht = calloc(1, sizeof(dht_t));
+  if(!dht) return -1;
+
   dht->bucket = bucket_new(0, 255);
   if(dht->bucket == NULL) {
     goto error;
@@ -313,10 +324,14 @@ dht_init(dht_t *dht, int port){
     goto cleanup;
   }
 
+  for(int i = 0; i < MAX_SEARCH; i++)
+    dht->search_idx[i] = i;
+
   return 0;
 cleanup:
   bucket_free(dht->bucket);
 error:
+  free(dht);
   return -1;
 }
 
@@ -326,17 +341,10 @@ dht_close(dht_t *dht) {
   close(dht->socket);
 }
 
-typedef struct {
-  char type;
-  uint8_t token[DHT_HASH_SIZE];
-  uint8_t key[DHT_HASH_SIZE];
-  uint8_t id[DHT_HASH_SIZE];
-} __attribute__((packed)) request_t;
-
 search_t *
 get_search(dht_t *dht, dht_get_callback success, dht_failure_callback error, void *closure) {
   if(dht->search_len + 1 >= MAX_SEARCH) return NULL;
-  search_t *to_search = &dht->searches[dht->search_len];
+  search_t *to_search = &dht->searches[dht->search_idx[dht->search_len]];
   random_bytes(to_search->token, DHT_HASH_SIZE);
   to_search->success = success;
   to_search->error = error;
@@ -436,10 +444,24 @@ dht_run(dht_t *dht, int timeout) {
 
   if(!memcmp(&node->address, &addr, sizeof(addr))) return -1; // TOFU
 
-
-  // send response
+  switch(request->type) {
+    case 'r':
+      break;
+    case 's':
+      break;
+  }
+  
 
   // clear old searches
+  for(int i = 0; i < dht->search_len; i++) {
+    search_t search = dht->searches[dht->search_idx[i]];
+    if(time(NULL) - search.sent > 60) {
+      uint16_t tmp = dht->search_idx[dht->search_len - 1];
+      dht->search_idx[dht->search_len - 1] = dht->search_idx[i];
+      dht->search_idx[i] = tmp;
+      dht->search_len--;
+    }
+  }
 
   return 0;
 cleanup:
