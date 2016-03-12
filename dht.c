@@ -2,6 +2,7 @@
 #include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <time.h>
 #include <stdbool.h>
 #include <stdint.h>
@@ -396,24 +397,20 @@ dht_set(dht_t *dht, void *data, size_t len, dht_get_callback success, dht_failur
 
 int
 dht_run(dht_t *dht) {
-  return -1;
-  // switch(op){
-  //   case DHT_PING:
-  //     node_t* node = dht_find_node(dht, node_id);
-  //     if(node == NULL) return -1;
-  //     node_update(node);
-  //     dht->send(dht, DHT_PONG, NULL, 0, node);
-  //     return 1;
-  //   case DHT_FIND_NODES:
-  //     // todo: implement nearest_nodes and send
-  //     node_list_t* nodes = dht_find_nearest_nodes(dht, node_id, 10);
-  //     if(nodes == NULL) return -1;
-  //     dht->send(dht, DHT_NODES, node, sizeof(node), node);
-  //     return nodes->length;
-  //   case DHT_ANNOUNCE:
-  //     // add to dht
-  //     return 1;
-  //   default:
-  //     return -1;
-  // }
+  struct pollfd fd = {0};
+  fd.fd = dht->socket;
+  fd.events = POLLIN;
+  poll(&fd, 1, 100);
+
+  if(!(fd.revents & POLLIN)) return 0;
+
+  // recv data
+
+  // add node
+
+  // send response
+
+  // clear old searches
+
+  return 0;
 }
