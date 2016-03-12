@@ -28,15 +28,15 @@ random_bytes(uint8_t *buf, size_t size){
 
 
 static void
-xor(uint8_t target[32], uint8_t a[32], uint8_t b[32]) {
-  for(int i = 0; i < 32; i++) {
+xor(uint8_t target[DHT_HASH_SIZE], uint8_t a[DHT_HASH_SIZE], uint8_t b[DHT_HASH_SIZE]) {
+  for(int i = 0; i < DHT_HASH_SIZE; i++) {
     target[i] = a[i] ^ b[i];
   }
 }
 
 static int
-compare(uint8_t a[32], uint8_t b[32]){
-  for(int i = 0; i < 32; i++){
+compare(uint8_t a[DHT_HASH_SIZE], uint8_t b[DHT_HASH_SIZE]){
+  for(int i = 0; i < DHT_HASH_SIZE; i++){
     uint8_t aint = a[i], bint = b[i];
 
     if(aint == bint) continue;
@@ -47,7 +47,7 @@ compare(uint8_t a[32], uint8_t b[32]){
 }
 
 typedef struct dh_node_t {
-  uint8_t id[32];
+  uint8_t id[DHT_HASH_SIZE];
   time_t created_at;
   time_t last_heard;
   struct sockaddr_storage address;
@@ -59,14 +59,14 @@ node_update(node_t *node){
 }
 
 static node_t *
-node_new(const uint8_t id[32], const struct sockaddr_storage *address) {
+node_new(const uint8_t id[DHT_HASH_SIZE], const struct sockaddr_storage *address) {
   node_t* node = calloc(1, sizeof(node_t));
 
   if(node == NULL)
     return NULL;
 
   memcpy((void *) &node->address, (const void *) address, sizeof(struct sockaddr_storage));
-  memcpy(node->id, id, 32);
+  memcpy(node->id, id, DHT_HASH_SIZE);
   time(&node->created_at);
   node_update(node);
   return node;
@@ -230,14 +230,14 @@ bucket_free(bucket_t *root) {
 }
 
 struct _find_state {
-  uint8_t target[32];
+  uint8_t target[DHT_HASH_SIZE];
   node_t *current;
 };
 
 static int
 find_walker(void *ctx, bucket_t *root){
   struct _find_state *state = ctx;
-  uint8_t adelta[32], bdelta[32];
+  uint8_t adelta[DHT_HASH_SIZE], bdelta[DHT_HASH_SIZE];
 
   for(int i = 0; i < root->length; i++){
     xor(adelta, state->target, root->nodes[i]->id);
@@ -262,6 +262,7 @@ typedef struct {
 // all that for these:
 struct dht_s {
   int socket;
+  uint8_t id[DHT_HASH_SIZE];
   search_t searches[MAX_SEARCH];
   uint16_t search_len;
   struct bucket_t *bucket;
@@ -287,6 +288,8 @@ dht_init(dht_t *dht, int port){
   if(dht->bucket == NULL) {
     goto error;
   }
+
+  random_bytes(dht->id, DHT_HASH_SIZE);
 
   struct addrinfo hints = {0}, *res;
   hints.ai_family = AF_UNSPEC;
@@ -325,8 +328,9 @@ dht_close(dht_t *dht) {
 
 typedef struct {
   char type;
-  uint32_t token[DHT_HASH_SIZE];
-  uint32_t key[DHT_HASH_SIZE];
+  uint8_t token[DHT_HASH_SIZE];
+  uint8_t key[DHT_HASH_SIZE];
+  uint8_t id[DHT_HASH_SIZE];
 } __attribute__((packed)) request_t;
 
 search_t *
@@ -347,7 +351,7 @@ compress_and_send(const dht_t *dht, const node_t *node, const uint8_t *buf, cons
   uint8_t *comp = (uint8_t *) calloc(1, len);
   if(!comp) return -1;
   size_t length;
-  int ret = compress(comp, &length, buf, len); 
+  size_t ret = compress(comp, &length, buf, len); 
   if(ret != Z_OK) {
     free(comp);
     return -1;
@@ -368,6 +372,7 @@ dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE], dht_get_callback success, dht_fa
   request_t get = { .type = 'g' };
   memcpy(get.token, to_search->token, DHT_HASH_SIZE);
   memcpy(get.key, key, DHT_HASH_SIZE);
+  memcpy(get.id, dht->id, DHT_HASH_SIZE);
 
   return compress_and_send(dht, node, (uint8_t *)&get, sizeof(get));
 }
@@ -385,6 +390,7 @@ dht_set(dht_t *dht, void *data, size_t len, dht_get_callback success, dht_failur
   request_t set = { .type = 's' };
   memcpy(set.token, to_search->token, DHT_HASH_SIZE);
   memcpy(set.key, key, DHT_HASH_SIZE);
+  memcpy(set.id, dht->id, DHT_HASH_SIZE);
 
   uint8_t *buf = calloc(1, sizeof(set) + len);
   if(buf == NULL) return -1;
@@ -395,22 +401,49 @@ dht_set(dht_t *dht, void *data, size_t len, dht_get_callback success, dht_failur
   return ret;
 }
 
+#define MAX_SIZE 1500
+
 int
-dht_run(dht_t *dht) {
+dht_run(dht_t *dht, int timeout) {
+  node_t *node = NULL;
   struct pollfd fd = {0};
   fd.fd = dht->socket;
   fd.events = POLLIN;
-  poll(&fd, 1, 100);
+  poll(&fd, 1, timeout);
 
   if(!(fd.revents & POLLIN)) return 0;
 
-  // recv data
+  uint8_t buf[MAX_SIZE] = {0};
+  struct sockaddr_storage addr = {0};
+  socklen_t len;
+  size_t ret = recvfrom(dht->socket, buf, MAX_SIZE, 0, (struct sockaddr *)&addr, &len);
+  if(ret == -1) return ret;
 
-  // add node
+  uint8_t *big = calloc(1, ret);
+  if(big == NULL) return -1;
+  size_t big_len;
+  ret = uncompress(big, &big_len, buf, ret);
+  if(ret != Z_OK)
+    goto cleanup;
+
+  request_t *request = (request_t *)big;
+  node = find_node(dht, request->id);
+  if(node == NULL) {
+    node = node_new(request->id, &addr);
+    if(node == NULL) goto cleanup;
+    bucket_insert(dht->bucket, node);
+  }
+
+  if(!memcmp(&node->address, &addr, sizeof(addr))) return -1; // TOFU
+
 
   // send response
 
   // clear old searches
 
   return 0;
+cleanup:
+  free(big);
+  if(node) free(node);
+  return -1;
 }

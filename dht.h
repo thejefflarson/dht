@@ -24,7 +24,7 @@ int
 dht_set(dht_t *dht, void *data, size_t len, dht_get_callback success, dht_failure_callback error, void *closure);
 
 int
-dht_run(dht_t *dht);
+dht_run(dht_t *dht, int timeout);
 
 void
 dht_close(dht_t *dht);
