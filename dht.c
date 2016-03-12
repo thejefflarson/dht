@@ -257,7 +257,6 @@ typedef struct {
   dht_failure_callback error;
 } search_t;
 
-
 #define MAX_SEARCH 1024
 // all that for these:
 struct dht_s {
@@ -328,7 +327,6 @@ typedef struct {
   uint32_t token[DHT_HASH_SIZE];
   uint32_t key[DHT_HASH_SIZE];
 } __attribute__((packed)) request_t;
-
 
 search_t *
 get_search(dht_t *dht, dht_get_callback success, dht_failure_callback error, void *closure) {
