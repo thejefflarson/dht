@@ -1,11 +1,15 @@
 SOURCES = $(shell ls test_*.c)
 TESTS = $(basename $(SOURCES))
+DEPS = ../vendor/blake2b-ref.o #../vendor/tweetnacl.o
 CC ?= clang
 
 test: coverage/index.html
 
-$(TESTS): %: %.c ../dht.c ../dht.h tap.h Makefile
-	$(CC) $< -Wall -g -fprofile-arcs -ftest-coverage -fsanitize=address -fno-omit-frame-pointer -o $@
+$(DEPS):
+	cd .. && make && cd test
+
+$(TESTS): %: %.c ../dht.c ../dht.h $(DEPS) tap.h Makefile 
+	$(CC) $< $(DEPS) -Wall -g -fprofile-arcs -ftest-coverage -fsanitize=address -fno-omit-frame-pointer -lz -o $@
 
 %.gcno: %
 	./$<
