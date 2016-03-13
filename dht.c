@@ -459,6 +459,7 @@ dht_run(dht_t *dht, int timeout) {
       dht->search_idx[dht->search_len - 1] = dht->search_idx[i];
       dht->search_idx[i] = tmp;
       dht->search_len--;
+      search.error(search.data);
     }
   }
 
