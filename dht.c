@@ -290,11 +290,10 @@ find_node(dht_t *dht, uint8_t key[DHT_HASH_SIZE]) {
   return state.current;
 }
 
-int
-dht_init(dht_t *dht, int port){
-  dht = calloc(1, sizeof(dht_t));
-  if(!dht) return -1;
-
+dht_t *
+dht_new(int port) {
+  dht_t *dht = calloc(1, sizeof(dht_t));
+  if(!dht) return NULL;
   dht->bucket = bucket_new(0, 255);
   if(dht->bucket == NULL) {
     goto error;
@@ -302,7 +301,7 @@ dht_init(dht_t *dht, int port){
 
   random_bytes(dht->id, DHT_HASH_SIZE);
 
-  struct addrinfo hints = {0}, *res;
+  struct addrinfo hints = {0}, *res = NULL;
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_DGRAM;
   hints.ai_flags = AI_PASSIVE;
@@ -311,8 +310,7 @@ dht_init(dht_t *dht, int port){
   int error = getaddrinfo(NULL, cport, &hints, &res);
   if(error) {
     errno = error;
-    bucket_free(dht->bucket);
-    return -2;
+    goto cleanup;
   }
 
   dht->socket = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
@@ -323,22 +321,24 @@ dht_init(dht_t *dht, int port){
   if(bind(dht->socket, res->ai_addr, res->ai_addrlen) == -1) {
     goto cleanup;
   }
-
+  freeaddrinfo(res);
   for(int i = 0; i < MAX_SEARCH; i++)
     dht->search_idx[i] = i;
 
-  return 0;
+  return dht;
 cleanup:
+  if(res != NULL) freeaddrinfo(res);
   bucket_free(dht->bucket);
 error:
   free(dht);
-  return -1;
+  return NULL;
 }
 
 void
 dht_close(dht_t *dht) {
   bucket_free(dht->bucket);
   close(dht->socket);
+  free(dht);
 }
 
 search_t *
@@ -451,7 +451,6 @@ dht_run(dht_t *dht, int timeout) {
       break;
   }
   
-
   // clear old searches
   for(int i = 0; i < dht->search_len; i++) {
     search_t search = dht->searches[dht->search_idx[i]];

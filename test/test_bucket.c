@@ -8,7 +8,6 @@ test_bucket(){
   bucket_free(bucket);
 }
 
-
 static int
 _walker(void *ctx, bucket_t *root){
   (void) root;
@@ -24,8 +23,8 @@ test_bucket_insert(){
   int ins = 0;
   struct sockaddr_storage st = {0};
   for(int i = 0; i < 100; i++){
-    uint8_t buf[32];
-    random_bytes(buf, 32);
+    uint8_t buf[DHT_HASH_SIZE];
+    random_bytes(buf, DHT_HASH_SIZE);
     node_t *node = node_new(buf, &st);
     bucket_t *nins = bucket_insert(bucket, node);
     if(!nins) {
@@ -45,8 +44,8 @@ test_bucket_update(){
   bucket_t *bucket = bucket_new(0, 255);
   struct sockaddr_storage st = {0};
   int j = 0;
-  uint8_t buf[32];
-  random_bytes(buf, 32);
+  uint8_t buf[DHT_HASH_SIZE];
+  random_bytes(buf, DHT_HASH_SIZE);
   node_t *node = node_new(buf, &st);
   bucket_insert(bucket, node);
   node->last_heard = 0;

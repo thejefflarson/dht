@@ -7,9 +7,9 @@
 
 typedef struct dht_s dht_t;
 
-// sets errno on error returns -1 for general errors and -2 for getaddrinfo errors
-int
-dht_init(dht_t *dht, int port);
+// sets errno on error returns NULL
+dht_t *
+dht_new(int port);
 
 typedef void
 (*dht_get_callback)(void *closure, uint8_t node_id[DHT_HASH_SIZE], uint8_t *data, size_t length);

@@ -1,5 +1,5 @@
 CC = clang
-EXTRA ?= 
+EXTRA ?= -O3
 CFLAGS = $(shell pkg-config --cflags zlib) -fPIC $(EXTRA)
 LDFLAGS = $(shell pkg-config --libs zlib) -shared
 DYNAMIC = build/libdht.so
