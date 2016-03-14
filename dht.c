@@ -359,12 +359,12 @@ compress_and_send(const dht_t *dht, const node_t *node, const uint8_t *buf, cons
   uint8_t *comp = (uint8_t *) calloc(1, len);
   if(!comp) return -1;
   size_t length;
-  size_t ret = compress(comp, &length, buf, len); 
+  size_t ret = compress(comp, &length, buf, len);
   if(ret != Z_OK) {
     free(comp);
     return -1;
   }
-  
+
   ret = sendto(dht->socket, comp, length, 0, (struct sockaddr *)&node->address, sizeof(node->address));
   free(comp);
   return ret;
@@ -376,7 +376,7 @@ dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE], dht_get_callback success, dht_fa
   if(!node) return -1;
   search_t *to_search = get_search(dht, success, error, closure);
   if(!to_search) return -1;
-  
+
   request_t get = { .type = 'g' };
   memcpy(get.token, to_search->token, DHT_HASH_SIZE);
   memcpy(get.key, key, DHT_HASH_SIZE);
@@ -436,7 +436,7 @@ dht_run(dht_t *dht, int timeout) {
 
   request_t *request = (request_t *)big;
   node = find_node(dht, request->id);
-  if(node == NULL) {
+  if(node == NULL || compare(node->id, request->id) != 0) {
     node = node_new(request->id, &addr);
     if(node == NULL) goto cleanup;
     bucket_insert(dht->bucket, node);
@@ -444,13 +444,15 @@ dht_run(dht_t *dht, int timeout) {
 
   if(!memcmp(&node->address, &addr, sizeof(addr))) return -1; // TOFU
 
+  node_update(&node->last_heard);
+
   switch(request->type) {
     case 'r':
       break;
     case 's':
       break;
   }
-  
+
   // clear old searches
   for(int i = 0; i < dht->search_len; i++) {
     search_t search = dht->searches[dht->search_idx[i]];
@@ -462,6 +464,8 @@ dht_run(dht_t *dht, int timeout) {
       search.error(search.data);
     }
   }
+
+  bucket_update(dht->root);
 
   return 0;
 cleanup:
