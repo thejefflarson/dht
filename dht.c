@@ -444,7 +444,7 @@ dht_run(dht_t *dht, int timeout) {
 
   if(!memcmp(&node->address, &addr, sizeof(addr))) return -1; // TOFU
 
-  node_update(&node->last_heard);
+  node_update(node);
 
   switch(request->type) {
     case 'r':
@@ -465,7 +465,7 @@ dht_run(dht_t *dht, int timeout) {
     }
   }
 
-  bucket_update(dht->root);
+  bucket_update(dht->bucket);
 
   return 0;
 cleanup:
