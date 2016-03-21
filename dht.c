@@ -497,9 +497,9 @@ dht_run(dht_t *dht, int timeout) {
       compress_and_send(dht, node, (uint8_t *)&resp, sizeof(resp));
       break;
     }
-    case 'o': { // ping response NOOP
+    case 'o': { // ping response
       for(int i = 0; dht->search_len; i++) {
-        if(crypto_verify_32(dht->searches[dht->search_idx[i]].token, request->token)){ // should be
+        if(crypto_verify_32(dht->searches[dht->search_idx[i]].token, request->token)){
           kill_search(dht, i);
           break;
         }
