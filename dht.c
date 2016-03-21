@@ -35,6 +35,7 @@ typedef struct bucket_t {
 
 typedef struct {
   uint8_t token[DHT_HASH_SIZE];
+  uint8_t key[DHT_HASH_SIZE];
   time_t sent;
   void* data;
   dht_get_callback success;
@@ -341,10 +342,11 @@ dht_close(dht_t *dht) {
 }
 
 search_t *
-get_search(dht_t *dht, dht_get_callback success, dht_failure_callback error, void *closure) {
+get_search(dht_t *dht, const uint8_t key[DHT_HASH_SIZE], dht_get_callback success, dht_failure_callback error, void *closure) {
   if(dht->search_len + 1 >= MAX_SEARCH) return NULL;
   search_t *to_search = &dht->searches[dht->search_idx[dht->search_len]];
   random_bytes(to_search->token, DHT_HASH_SIZE);
+  memcpy(to_search->key, key, DHT_HASH_SIZE);
   to_search->success = success;
   to_search->error = error;
   time(&to_search->sent);
@@ -373,7 +375,7 @@ int
 dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE], dht_get_callback success, dht_failure_callback error, void *closure) {
   node_t *node = find_node(dht, key);
   if(!node) return -1;
-  search_t *to_search = get_search(dht, success, error, closure);
+  search_t *to_search = get_search(dht, key, success, error, closure);
   if(!to_search) return -1;
 
   request_t get = { .type = 'g' };
@@ -393,7 +395,7 @@ dht_set(dht_t *dht, void *data, size_t len, dht_get_callback success, dht_failur
   if(ret == -1) return ret;
   node_t *node = find_node(dht, key);
   if(!node) return -1;
-  search_t *to_search = get_search(dht, success, error, closure);
+  search_t *to_search = get_search(dht, key, success, error, closure);
   if(!to_search) return -1;
 
   request_t set = { .type = 's' };
