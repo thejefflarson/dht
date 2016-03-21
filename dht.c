@@ -447,9 +447,17 @@ dht_run(dht_t *dht, int timeout) {
   node_update(node);
 
   switch(request->type) {
-    case 'r':
+    case 'p': // ping
       break;
-    case 's':
+    case 'o': // ping response
+      break;
+    case 'g': // get
+      break;
+    case 'h': // get response
+      break;
+    case 's': // set
+      break;
+    case 't': // set response
       break;
   }
 
