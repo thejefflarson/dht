@@ -54,7 +54,6 @@ struct dht_s {
 typedef struct {
   char type;
   uint8_t token[DHT_HASH_SIZE];
-  uint8_t key[DHT_HASH_SIZE];
   uint8_t id[DHT_HASH_SIZE];
 } __attribute__((packed)) request_t;
 
@@ -379,10 +378,12 @@ dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE], dht_get_callback success, dht_fa
 
   request_t get = { .type = 'g' };
   memcpy(get.token, to_search->token, DHT_HASH_SIZE);
-  memcpy(get.key, key, DHT_HASH_SIZE);
   memcpy(get.id, dht->id, DHT_HASH_SIZE);
+  uint8_t buf[sizeof(get) + DHT_HASH_SIZE] = {0};
+  memcpy(buf, &get, sizeof(get));
+  memcpy(buf + sizeof(get), key, DHT_HASH_SIZE);
 
-  return compress_and_send(dht, node, (uint8_t *)&get, sizeof(get));
+  return compress_and_send(dht, node, (uint8_t *)&buf, sizeof(buf));
 }
 
 int
@@ -397,13 +398,13 @@ dht_set(dht_t *dht, void *data, size_t len, dht_get_callback success, dht_failur
 
   request_t set = { .type = 's' };
   memcpy(set.token, to_search->token, DHT_HASH_SIZE);
-  memcpy(set.key, key, DHT_HASH_SIZE);
   memcpy(set.id, dht->id, DHT_HASH_SIZE);
 
-  uint8_t *buf = calloc(1, sizeof(set) + len);
+  uint8_t *buf = calloc(1, sizeof(set) + DHT_HASH_SIZE + len);
   if(buf == NULL) return -1;
   memcpy(buf, &set, sizeof(set));
-  memcpy(buf + sizeof(set), data, len);
+  memcpy(buf + sizeof(set), key, DHT_HASH_SIZE);
+  memcpy(buf + sizeof(set) + DHT_HASH_SIZE, data, len);
   ret = compress_and_send(dht, node, buf, sizeof(set) + len);
   free(buf);
   return ret;
@@ -413,6 +414,18 @@ dht_set(dht_t *dht, void *data, size_t len, dht_get_callback success, dht_failur
 
 int
 dht_run(dht_t *dht, int timeout) {
+  // clear old searches
+  for(int i = 0; i < dht->search_len; i++) {
+    search_t search = dht->searches[dht->search_idx[i]];
+    if(time(NULL) - search.sent > 60) {
+      uint16_t tmp = dht->search_idx[dht->search_len - 1];
+      dht->search_idx[dht->search_len - 1] = dht->search_idx[i];
+      dht->search_idx[i] = tmp;
+      dht->search_len--;
+      search.error(search.data);
+    }
+  }
+
   node_t *node = NULL;
   struct pollfd fd = {0};
   fd.fd = dht->socket;
@@ -448,14 +461,13 @@ dht_run(dht_t *dht, int timeout) {
 
   switch(request->type) {
     case 'p': { // ping
-      request_t req = { .type = 'o' };
-      // write public key
-      // write socket addr
-      // write port
-      // send
+      request_t resp = { .type = 'o' };
+      memcpy(resp.id, dht->id, DHT_HASH_SIZE);
+      memcpy(resp.token, request->token, DHT_HASH_SIZE);
+      compress_and_send(dht, node, (uint8_t *)&resp, sizeof(resp));
       break;
     }
-    case 'o': // ping response
+    case 'o': // ping response NOOP
       break;
     case 'g': // get
       break;
@@ -467,18 +479,6 @@ dht_run(dht_t *dht, int timeout) {
       break;
     case 't': // set response
       break;
-  }
-
-  // clear old searches
-  for(int i = 0; i < dht->search_len; i++) {
-    search_t search = dht->searches[dht->search_idx[i]];
-    if(time(NULL) - search.sent > 60) {
-      uint16_t tmp = dht->search_idx[dht->search_len - 1];
-      dht->search_idx[dht->search_len - 1] = dht->search_idx[i];
-      dht->search_idx[i] = tmp;
-      dht->search_len--;
-      search.error(search.data);
-    }
   }
 
   bucket_update(dht->bucket);
