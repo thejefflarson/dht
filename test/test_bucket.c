@@ -24,7 +24,7 @@ test_bucket_insert(){
   struct sockaddr_storage st = {0};
   for(int i = 0; i < 100; i++){
     uint8_t buf[DHT_HASH_SIZE];
-    random_bytes(buf, DHT_HASH_SIZE);
+    randombytes(buf, DHT_HASH_SIZE);
     node_t *node = node_new(buf, &st);
     bucket_t *nins = bucket_insert(bucket, node);
     if(!nins) {
@@ -45,7 +45,7 @@ test_bucket_update(){
   struct sockaddr_storage st = {0};
   int j = 0;
   uint8_t buf[DHT_HASH_SIZE];
-  random_bytes(buf, DHT_HASH_SIZE);
+  randombytes(buf, DHT_HASH_SIZE);
   node_t *node = node_new(buf, &st);
   bucket_insert(bucket, node);
   node->last_heard = 0;

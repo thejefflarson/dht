@@ -4,7 +4,7 @@ CFLAGS = $(shell pkg-config --cflags zlib) -fPIC $(EXTRA)
 LDFLAGS = $(shell pkg-config --libs zlib) -shared
 DYNAMIC = build/libdht.so
 STATIC = build/libdht.a
-SRCS = dht.c vendor/blake2b-ref.c #vendor/tweetnacl.c
+SRCS = dht.c vendor/blake2b-ref.c vendor/tweetnacl.c
 OBJS = $(SRCS:.c=.o)
 
 .PHONY: all

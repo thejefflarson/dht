@@ -15,6 +15,7 @@
 #include <zlib.h>
 
 #include "vendor/blake2.h"
+#include "vendor/tweetnacl.h"
 
 #include "dht.h"
 
@@ -66,12 +67,32 @@ typedef struct {
 typedef int (*bucket_walk_callback)(void *ctx, bucket_t *root);
 
 
-static void
-random_bytes(uint8_t *buf, size_t size){
-  int f = open("/dev/urandom", O_RDONLY);
-  if(!f) exit(1);
-  read(f, buf, size);
-  close(f);
+static int fd = -1;
+
+void
+randombytes(unsigned char *x,unsigned long long xlen) {
+  int i;
+
+  if (fd == -1) {
+    for (;;) {
+      fd = open("/dev/urandom",O_RDONLY);
+      if (fd != -1) break;
+      sleep(1);
+    }
+  }
+
+  while (xlen > 0) {
+    if (xlen < 1048576) i = xlen; else i = 1048576;
+
+    i = read(fd,x,i);
+    if (i < 1) {
+      sleep(1);
+      continue;
+    }
+
+    x += i;
+    xlen -= i;
+  }
 }
 
 static void
@@ -299,7 +320,7 @@ dht_new(int port) {
     goto error;
   }
 
-  random_bytes(dht->id, DHT_HASH_SIZE);
+  randombytes(dht->id, DHT_HASH_SIZE);
 
   struct addrinfo hints = {0}, *res = NULL;
   hints.ai_family = AF_UNSPEC;
@@ -345,8 +366,8 @@ search_t *
 get_search(dht_t *dht, const uint8_t key[DHT_HASH_SIZE], dht_get_callback success, dht_failure_callback error, void *closure) {
   if(dht->search_len + 1 >= MAX_SEARCH) return NULL;
   search_t *to_search = &dht->searches[dht->search_idx[dht->search_len]];
-  random_bytes(to_search->token, DHT_HASH_SIZE);
-  memcpy(to_search->key, key, DHT_HASH_SIZE);
+  randombytes(to_search->token, DHT_HASH_SIZE);
+  if(key) memcpy(to_search->key, key, DHT_HASH_SIZE);
   to_search->success = success;
   to_search->error = error;
   time(&to_search->sent);
@@ -412,6 +433,17 @@ dht_set(dht_t *dht, void *data, size_t len, dht_get_callback success, dht_failur
   return ret;
 }
 
+static void
+kill_search(dht_t *dht, int idx) {
+  search_t search = dht->searches[dht->search_idx[idx]];
+  uint16_t tmp = dht->search_idx[dht->search_len - 1];
+  dht->search_idx[dht->search_len - 1] = dht->search_idx[idx];
+  dht->search_idx[idx] = tmp;
+  dht->search_len--;
+  search.error(search.data);
+}
+
+
 #define MAX_SIZE 1500
 
 int
@@ -420,11 +452,7 @@ dht_run(dht_t *dht, int timeout) {
   for(int i = 0; i < dht->search_len; i++) {
     search_t search = dht->searches[dht->search_idx[i]];
     if(time(NULL) - search.sent > 60) {
-      uint16_t tmp = dht->search_idx[dht->search_len - 1];
-      dht->search_idx[dht->search_len - 1] = dht->search_idx[i];
-      dht->search_idx[i] = tmp;
-      dht->search_len--;
-      search.error(search.data);
+      kill_search(dht, i);
     }
   }
 
@@ -469,10 +497,19 @@ dht_run(dht_t *dht, int timeout) {
       compress_and_send(dht, node, (uint8_t *)&resp, sizeof(resp));
       break;
     }
-    case 'o': // ping response NOOP
+    case 'o': { // ping response NOOP
+      for(int i = 0; dht->search_len; i++) {
+        if(crypto_verify_32(dht->searches[dht->search_idx[i]].token, request->token)){ // should be
+          kill_search(dht, i);
+          break;
+        }
+      }
       break;
-    case 'g': // get
+    }
+    case 'g': { // get
+
       break;
+    }
     case 'h': // get response found
       break;
     case 'i': // get response not found
