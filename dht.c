@@ -29,8 +29,7 @@ typedef struct dh_node_t {
 typedef struct bucket_t {
   node_t* nodes[8];
   int length;
-  uint8_t upper_limit;
-  uint8_t lower_limit;
+  uint8_t max[DHT_HASH_SIZE];
   struct bucket_t *next;
 } bucket_t;
 
@@ -156,6 +155,20 @@ node_sort(const void* a, const void *b) {
   }
 }
 
+static uint8_t
+lowbit(uint8_t key[DHT_HASH_SIZE]) {
+  int i, j, b;
+  for(i = DHT_HASH_SIZE - 1; i >= 0; i--) 
+    if(key[i] > 0)
+      break;
+
+  for(b = 0x80, j = 7; j >= 0; b >>= 1, j--)
+    if((key[i] & b) == 0)
+      break;
+
+  return i + j * 8;
+}
+
 static bool
 bucket_contains(bucket_t *root, node_t *node){
   return root->upper_limit > (uint8_t) node->id[0] && root->lower_limit <= (uint8_t) node->id[0];
@@ -167,17 +180,19 @@ bucket_has_space(bucket_t *root){
 }
 
 static uint8_t
-bucket_mid(bucket_t* root){
+bucket_mid(bucket_t* root, uint8_t mid[DHT_HASH_SIZE]){
+  uint8_t lowbit;
+
+
   return (root->upper_limit - root->lower_limit) / 2 + root->lower_limit;
 }
 
 static bucket_t*
-bucket_new(uint8_t lower, uint8_t upper) {
+bucket_new(uint8_t max[DHT_HASH_SIZE]) {
   bucket_t* bucket = calloc(1, sizeof(bucket_t));
   if(bucket == NULL)
     return NULL;
-  bucket->upper_limit = upper;
-  bucket->lower_limit = lower;
+  memcpy(bucket, max, DHT_HASH_SIZE);
   bucket->next = NULL;
   return bucket;
 }
@@ -187,18 +202,15 @@ bucket_insert(bucket_t *root, node_t *node);
 
 static bool
 bucket_split(bucket_t *root){
-  if((root->upper_limit - root->lower_limit) == 1)
-    return true; // can't split anymore
-
-  uint8_t mid = bucket_mid(root);
-
-  bucket_t *next = bucket_new(mid, root->upper_limit);
+  uint8_t mid[DHT_HASH_SIZE] = {0};
+  bool res = bucket_mid(root, mid);
+  if(res) return true;
+  bucket_t *next = bucket_new(mid);
   if(next == NULL)
     return true;
 
   next->next = root->next;
   root->next = next;
-  root->upper_limit = mid;
 
   for(int i = 0; i < root->length; i++){
     if(!bucket_contains(root, root->nodes[i])) {
@@ -315,7 +327,8 @@ dht_t *
 dht_new(int port) {
   dht_t *dht = calloc(1, sizeof(dht_t));
   if(!dht) return NULL;
-  dht->bucket = bucket_new(0, 255);
+  uint8_t key[DHT_HASH_SIZE] = {0xFF};
+  dht->bucket = bucket_new(key);
   if(dht->bucket == NULL) {
     goto error;
   }
