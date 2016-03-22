@@ -478,6 +478,23 @@ dht_run(dht_t *dht, int timeout) {
     goto cleanup;
 
   request_t *request = (request_t *)big;
+
+  if(request->type == 'o' ||
+     request->type == 'h' ||
+     request->type == 'i' ||
+     request->type == 't') {
+    bool killed = false;
+    for(int i = 0; dht->search_len; i++) {
+      if(crypto_verify_32(dht->searches[dht->search_idx[i]].token, request->token)){
+        kill_search(dht, i);
+        killed = true;
+        break;
+      }
+    }
+    // we don't recognize this search, bail
+    if(!killed) goto cleanup;
+  }
+
   node = find_node(dht, request->id);
   if(node == NULL || compare(node->id, request->id) != 0) {
     node = node_new(request->id, &addr);
@@ -497,15 +514,9 @@ dht_run(dht_t *dht, int timeout) {
       compress_and_send(dht, node, (uint8_t *)&resp, sizeof(resp));
       break;
     }
-    case 'o': { // ping response
-      for(int i = 0; dht->search_len; i++) {
-        if(crypto_verify_32(dht->searches[dht->search_idx[i]].token, request->token)){
-          kill_search(dht, i);
-          break;
-        }
-      }
+    case 'o':
       break;
-    }
+
     case 'g': { // get
 
       break;
