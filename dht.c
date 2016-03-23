@@ -180,6 +180,17 @@ add_ids(const uint8_t a[DHT_HASH_SIZE], const uint8_t b[DHT_HASH_SIZE], uint8_t 
 }
 
 static int
+subtract_ids(const uint8_t a[DHT_HASH_SIZE], const uint8_t b[DHT_HASH_SIZE], uint8_t c[DHT_HASH_SIZE]) {
+  int carry = 0;
+  for(int i = DHT_HASH_SIZE - 1; i >= 0; i--){
+    int res = (int)a[i] - (int)b[i] + carry;
+    carry = res;
+    c[i] = res < 0 ? 0 : res;
+  }
+  return carry < 0 ? -1 : 0;
+}
+
+static int
 divide_by_two(const a[DHT_HASH_SIZE], uint8_t b[DHT_HASH_SIZE]) {
 
 }
