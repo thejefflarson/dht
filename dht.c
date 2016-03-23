@@ -157,20 +157,6 @@ node_sort(const void* a, const void *b) {
 
 // we treat node ids as big endian integers so we can use a simple memcmp below
 // neat tweak from jech/dht.c
-static uint8_t
-lowbit(uint8_t key[DHT_HASH_SIZE]) {
-  int i, j, b;
-  for(i = DHT_HASH_SIZE - 1; i >= 0; i--) 
-    if(key[i] > 0)
-      break;
-
-  for(b = 0x80, j = 7; j >= 0; b >>= 1, j--)
-    if((key[i] & b))
-      break;
-
-  return i + j * 8;
-}
-
 static bool
 bucket_contains(bucket_t *root, node_t *node){
   return memcmp(root->max, node->id, DHT_HASH_SIZE) < 0 && 
@@ -182,11 +168,25 @@ bucket_has_space(bucket_t *root){
   return root->length < 8;
 }
 
-static uint8_t
+static int
+add_ids(const uint8_t a[DHT_HASH_SIZE], const uint8_t b[DHT_HASH_SIZE], uint8_t c[DHT_HASH_SIZE]) {
+  uint8_t carry = 0;
+  for(int i = DHT_HASH_SIZE - 1; i >= 0; i--){
+    uint16_t res = (uint16_t)a[i] + (uint16_t)b[i] + carry;
+    carry = res > 0xFF ? res - 0xFF : 0;
+    c[i] = res > 0xFF ? 0xFF : res;
+  }
+  return carry > 0 ? -1 : 0;
+}
+
+static int
+divide_by_two(const a[DHT_HASH_SIZE], uint8_t b[DHT_HASH_SIZE]) {
+
+}
+
+static int
 bucket_mid(bucket_t* root, uint8_t mid[DHT_HASH_SIZE]){
-  uint8_t lowbit;
-
-
+    
   return (root->upper_limit - root->lower_limit) / 2 + root->lower_limit;
 }
 
