@@ -69,7 +69,7 @@ typedef int (*bucket_walk_callback)(void *ctx, bucket_t *root);
 static int fd = -1;
 
 void
-randombytes(unsigned char *x,unsigned long long xlen) {
+randombytes(uint8_t *x, uint32_t xlen) {
   int i;
 
   if (fd == -1) {
@@ -191,7 +191,7 @@ subtract_ids(const uint8_t a[DHT_HASH_SIZE], const uint8_t b[DHT_HASH_SIZE], uin
 }
 
 static int
-divide_by_two(const a[DHT_HASH_SIZE], uint8_t b[DHT_HASH_SIZE]) {
+divide_by_two(const uint8_t a[DHT_HASH_SIZE], uint8_t b[DHT_HASH_SIZE]) {
 
 }
 
