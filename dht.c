@@ -160,7 +160,7 @@ node_sort(const void* a, const void *b) {
 static bool
 bucket_contains(bucket_t *root, node_t *node){
   return memcmp(root->max, node->id, DHT_HASH_SIZE) < 0 && 
-        (root->next == NULL || memcmp(root->next->max, node->id, DHT_HASH_SIZE));
+        (root->next == NULL || memcmp(root->next->max, node->id, DHT_HASH_SIZE) >= 0);
 }
 
 static bool
@@ -184,8 +184,8 @@ subtract_ids(const uint8_t a[DHT_HASH_SIZE], const uint8_t b[DHT_HASH_SIZE], uin
   int carry = 0;
   for(int i = DHT_HASH_SIZE - 1; i >= 0; i--){
     int res = (int)a[i] - (int)b[i] + carry;
-    carry = res;
-    c[i] = res < 0 ? 0 : res;
+    carry = res < 0 ? -1 : 0;
+    c[i] = carry == -1 ? (0xFF + 1) + res : res;
   }
   return carry < 0 ? -1 : 0;
 }
