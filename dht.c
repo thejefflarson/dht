@@ -173,8 +173,8 @@ add_ids(const uint8_t a[DHT_HASH_SIZE], const uint8_t b[DHT_HASH_SIZE], uint8_t 
   uint8_t carry = 0;
   for(int i = DHT_HASH_SIZE - 1; i >= 0; i--){
     uint16_t res = (uint16_t)a[i] + (uint16_t)b[i] + carry;
-    carry = res > 0xFF ? res - 0xFF : 0;
-    c[i] = res > 0xFF ? 0xFF : res;
+    carry = res > 0xFF ? 1 : 0;
+    c[i] = carry ? res - (0xFF + 1) : res;
   }
   return carry > 0 ? -1 : 0;
 }
@@ -197,8 +197,7 @@ divide_by_two(const a[DHT_HASH_SIZE], uint8_t b[DHT_HASH_SIZE]) {
 
 static int
 bucket_mid(bucket_t* root, uint8_t mid[DHT_HASH_SIZE]){
-    
-  return (root->upper_limit - root->lower_limit) / 2 + root->lower_limit;
+  return -1;//(root->upper_limit - root->lower_limit) / 2 + root->lower_limit;
 }
 
 static bucket_t*

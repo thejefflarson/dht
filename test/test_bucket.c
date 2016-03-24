@@ -3,7 +3,8 @@
 
 static void
 test_bucket(){
-  bucket_t *bucket = bucket_new(0, 255);
+  uint8_t a[DHT_HASH_SIZE] = {0xFF};
+  bucket_t *bucket = bucket_new(a);
   ok(bucket != NULL, "bucket is not null");
   bucket_free(bucket);
 }
@@ -18,7 +19,8 @@ _walker(void *ctx, bucket_t *root){
 
 static void
 test_bucket_insert(){
-  bucket_t *bucket = bucket_new(0, 255);
+  uint8_t a[DHT_HASH_SIZE] = {0xFF};
+  bucket_t *bucket = bucket_new(a);
   ok(bucket != NULL, "bucket is not null");
   int ins = 0;
   struct sockaddr_storage st = {0};
@@ -41,7 +43,8 @@ test_bucket_insert(){
 
 static void
 test_bucket_update(){
-  bucket_t *bucket = bucket_new(0, 255);
+  uint8_t a[DHT_HASH_SIZE] = {0xFF};
+  bucket_t *bucket = bucket_new(a);
   struct sockaddr_storage st = {0};
   int j = 0;
   uint8_t buf[DHT_HASH_SIZE];
