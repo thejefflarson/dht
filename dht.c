@@ -499,7 +499,7 @@ dht_run(dht_t *dht, int timeout) {
   uint8_t buf[MAX_SIZE] = {0};
   struct sockaddr_storage addr = {0};
   socklen_t len;
-  size_t ret = recvfrom(dht->socket, buf, MAX_SIZE, 0, (struct sockaddr *)&addr, &len);
+  ssize_t ret = recvfrom(dht->socket, buf, MAX_SIZE, 0, (struct sockaddr *)&addr, &len);
   if(ret == -1) return ret;
 
   uint8_t *big = calloc(1, ret);
