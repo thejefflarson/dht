@@ -28,8 +28,8 @@ test_addition() {
 
 static void
 test_subtraction(){
-  uint8_t a[DHT_HASH_SIZE] = {0};
   uint8_t b[DHT_HASH_SIZE] = {0};
+  uint8_t a[DHT_HASH_SIZE] = {0};
   uint8_t c[DHT_HASH_SIZE] = {0};
   a[DHT_HASH_SIZE - 1] = 2;
   b[DHT_HASH_SIZE - 1] = 1;
@@ -53,9 +53,22 @@ test_subtraction(){
   ok(ret == -1, "reports underflow");
 }
 
+static void
+test_division() {
+  uint8_t a[DHT_HASH_SIZE] = {0};
+  uint8_t b[DHT_HASH_SIZE] = {0};
+  a[DHT_HASH_SIZE - 1] = 2;
+  divide_by_two(a, b);
+  ok(a[DHT_HASH_SIZE - 1] == 1, "2 / 2 = 1");
+  memset(a, 0, sizeof(a));
+  a[DHT_HASH_SIZE - 2] = 1;
+  ok(a[DHT_HASH_SIZE - 1] == 0x80, "256 / 2 = 128");
+}
+
 int
 main(){
   start_test;
   test_addition();
   test_subtraction();
+  test_division();
 }
