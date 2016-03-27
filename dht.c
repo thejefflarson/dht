@@ -192,7 +192,7 @@ subtract_ids(const uint8_t a[DHT_HASH_SIZE], const uint8_t b[DHT_HASH_SIZE], uin
 
 static int
 divide_by_two(const uint8_t a[DHT_HASH_SIZE], uint8_t b[DHT_HASH_SIZE]) {
-  for(int i = DHT_HASH_SIZE - 1; i >= 0; i++) {
+  for(int i = DHT_HASH_SIZE - 1; i >= 0; i--) {
     uint8_t it = a[i] >> 1;
     if(i - 1 > 0 && a[i - 1] & 1)
       it |= 0x80;
