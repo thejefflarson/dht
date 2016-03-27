@@ -190,7 +190,7 @@ subtract_ids(const uint8_t a[DHT_HASH_SIZE], const uint8_t b[DHT_HASH_SIZE], uin
   return carry < 0 ? -1 : 0;
 }
 
-static int
+static void
 divide_by_two(const uint8_t a[DHT_HASH_SIZE], uint8_t b[DHT_HASH_SIZE]) {
   for(int i = DHT_HASH_SIZE - 1; i >= 0; i--) {
     uint8_t it = a[i] >> 1;
@@ -198,12 +198,23 @@ divide_by_two(const uint8_t a[DHT_HASH_SIZE], uint8_t b[DHT_HASH_SIZE]) {
       it |= 0x80;
     b[i] = it;
   }
-  return 0;
 }
 
 static int
 bucket_mid(bucket_t* root, uint8_t mid[DHT_HASH_SIZE]){
-  return -1;//(root->upper_limit - root->lower_limit) / 2 + root->lower_limit;
+  int ret;
+  if(root->next == NULL) {
+    divide_by_two(root->max, mid);
+    return 0;
+  }
+  uint8_t a[DHT_HASH_SIZE] = {0};
+  uint8_t b[DHT_HASH_SIZE] = {0};
+  ret = subtract_ids(root->max, root->next->max, a);
+  if(ret == -1) return -1;
+  divide_by_two(a, b);
+  ret = add_ids(root->next->max, b, mid);
+  if(ret == -1) return -1;
+  return 0;
 }
 
 static bucket_t*

@@ -59,10 +59,10 @@ test_division() {
   uint8_t b[DHT_HASH_SIZE] = {0};
   a[DHT_HASH_SIZE - 1] = 2;
   divide_by_two(a, b);
-  printf("%i\n", a[DHT_HASH_SIZE - 1]);
   ok(b[DHT_HASH_SIZE - 1] == 1, "2 / 2 = 1");
   memset(a, 0, sizeof(a));
   a[DHT_HASH_SIZE - 2] = 1;
+  divide_by_two(a, b);
   ok(b[DHT_HASH_SIZE - 1] == 0x80, "256 / 2 = 128");
 }
 
