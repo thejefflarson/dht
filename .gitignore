@@ -1,6 +1,7 @@
 .DS_Store
 test/test_bucket
 test/test_dht
+test/test_math
 test/coverage
 test/coverage.info
 test/*.gcno
