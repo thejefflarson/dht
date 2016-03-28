@@ -65,7 +65,6 @@ typedef struct {
 
 typedef int (*bucket_walk_callback)(void *ctx, bucket_t *root);
 
-
 static int fd = -1;
 
 void
@@ -159,8 +158,8 @@ node_sort(const void* a, const void *b) {
 // neat tweak from jech/dht.c
 static bool
 bucket_contains(bucket_t *root, node_t *node){
-  return memcmp(root->max, node->id, DHT_HASH_SIZE) < 0 && 
-        (root->next == NULL || memcmp(root->next->max, node->id, DHT_HASH_SIZE) >= 0);
+  return memcmp(root->max, node->id, DHT_HASH_SIZE) > 0 && 
+        (root->next == NULL || memcmp(root->next->max, node->id, DHT_HASH_SIZE) <= 0);
 }
 
 static bool
@@ -222,7 +221,7 @@ bucket_new(uint8_t max[DHT_HASH_SIZE]) {
   bucket_t* bucket = calloc(1, sizeof(bucket_t));
   if(bucket == NULL)
     return NULL;
-  memcpy(bucket, max, DHT_HASH_SIZE);
+  memcpy(bucket->max, max, DHT_HASH_SIZE);
   bucket->next = NULL;
   return bucket;
 }
@@ -498,7 +497,7 @@ dht_run(dht_t *dht, int timeout) {
       kill_search(dht, i);
     }
   }
-
+  
   node_t *node = NULL;
   struct pollfd fd = {0};
   fd.fd = dht->socket;
@@ -506,7 +505,7 @@ dht_run(dht_t *dht, int timeout) {
   poll(&fd, 1, timeout);
 
   if(!(fd.revents & POLLIN)) return 0;
-
+  
   uint8_t buf[MAX_SIZE] = {0};
   struct sockaddr_storage addr = {0};
   socklen_t len;
