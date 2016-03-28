@@ -19,11 +19,6 @@ _walker(void *ctx, bucket_t *root){
 }
 
 static void
-test_bucket_membership() {
-  /* uint8_t */
-}
-
-static void
 test_bucket_insert(){
   uint8_t a[DHT_HASH_SIZE];
   memset(a, 0xFF, DHT_HASH_SIZE);
