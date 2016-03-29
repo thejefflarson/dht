@@ -22,7 +22,7 @@ coverage/index.html: coverage.info
 	genhtml -o coverage $<
 
 clean:
-	rm $(TESTS)
+	rm -f $(TESTS)
 	rm -rf coverage
 	rm -f *.gcno
 	rm -f *.gcda
