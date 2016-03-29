@@ -100,18 +100,6 @@ xor(uint8_t target[DHT_HASH_SIZE], uint8_t a[DHT_HASH_SIZE], uint8_t b[DHT_HASH_
   }
 }
 
-static int
-compare(uint8_t a[DHT_HASH_SIZE], uint8_t b[DHT_HASH_SIZE]){
-  for(int i = 0; i < DHT_HASH_SIZE; i++){
-    uint8_t aint = a[i], bint = b[i];
-
-    if(aint == bint) continue;
-
-    return aint > bint ? 1 : -1;
-  }
-  return 0;
-}
-
 static void
 node_update(node_t *node){
   time(&node->last_heard);
@@ -154,8 +142,6 @@ node_sort(const void* a, const void *b) {
   }
 }
 
-// we treat node ids as big endian integers so we can use a simple memcmp below
-// neat tweak from jech/dht.c
 static bool
 bucket_contains(bucket_t *root, node_t *node){
   return memcmp(root->max, node->id, DHT_HASH_SIZE) > 0 && 
@@ -331,7 +317,7 @@ find_walker(void *ctx, bucket_t *root){
     xor(adelta, state->target, root->nodes[i]->id);
     xor(bdelta, state->target, state->current->id);
 
-    if(compare(adelta, bdelta) == -1)
+    if(memcmp(adelta, bdelta, DHT_HASH_SIZE) == -1)
       state->current = root->nodes[i];
   }
 
