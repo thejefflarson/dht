@@ -317,7 +317,7 @@ find_walker(void *ctx, bucket_t *root){
     xor(adelta, state->target, root->nodes[i]->id);
     xor(bdelta, state->target, state->current->id);
 
-    if(memcmp(adelta, bdelta, DHT_HASH_SIZE) == -1)
+    if(memcmp(adelta, bdelta, DHT_HASH_SIZE) < 0)
       state->current = root->nodes[i];
   }
 
