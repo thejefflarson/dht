@@ -524,7 +524,7 @@ dht_run(dht_t *dht, int timeout) {
   }
 
   node = find_node(dht, request->id);
-  if(node == NULL || compare(node->id, request->id) != 0) {
+  if(node == NULL || memcmp(node->id, request->id, DHT_HASH_SIZE) != 0) {
     node = node_new(request->id, &addr);
     if(node == NULL) goto cleanup;
     bucket_insert(dht->bucket, node);
