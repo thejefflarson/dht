@@ -62,7 +62,8 @@ typedef struct {
 
 typedef struct {
   uint8_t target[DHT_HASH_SIZE];
-  node_t *current;
+  node_t *closest[8];
+  size_t closest_len;
 } find_state_t;
 
 typedef int (*bucket_walk_callback)(void *ctx, bucket_t *root);
@@ -316,11 +317,18 @@ find_walker(void *ctx, bucket_t *root){
   uint8_t adelta[DHT_HASH_SIZE], bdelta[DHT_HASH_SIZE];
 
   for(int i = 0; i < root->length; i++){
-    xor(adelta, state->target, root->nodes[i]->id);
-    xor(bdelta, state->target, state->current->id);
+    for(size_t j = 0; j < state->closest_len; j++) {
+      xor(adelta, state->target, root->nodes[i]->id);
+      xor(bdelta, state->target, state->closest[j]->id);
 
-    if(memcmp(adelta, bdelta, DHT_HASH_SIZE) < 0)
-      state->current = root->nodes[i];
+      if(memcmp(adelta, bdelta, DHT_HASH_SIZE) < 0) {
+        if(state->closest_len < 8) {
+          state->closest_len++;
+        }
+
+        //memmove(state->closest + j, )
+      }
+    }
   }
 
   return 0;
@@ -330,14 +338,15 @@ static node_t *
 find_node(dht_t *dht, uint8_t key[DHT_HASH_SIZE]) {
   if(dht->bucket->length == 0) return NULL;
 
-  find_state_t state;
+  find_state_t state = {0};
 
-  state.current = dht->bucket->nodes[0];
+  state.closest[0] = dht->bucket->nodes[0];
+  state.closest_len++;
   memcpy(state.target, key, DHT_HASH_SIZE);
 
   bucket_walk((void *) &state, dht->bucket, find_walker);
 
-  return state.current;
+  return state.closest[0];
 }
 
 dht_t *
@@ -472,7 +481,6 @@ search_idx(dht_t *dht, uint8_t token[DHT_HASH_SIZE]) {
   }
   return -1;
 }
-
 
 static search_t *
 find_search(dht_t *dht, uint8_t token[DHT_HASH_SIZE]) {
