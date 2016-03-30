@@ -49,6 +49,8 @@ struct dht_s {
   search_t searches[MAX_SEARCH];
   uint16_t search_idx[MAX_SEARCH];
   uint16_t search_len;
+  ssize_t (*lookup)(uint8_t key[DHT_HASH_SIZE], void **data);
+  int (*store)(uint8_t key[DHT_HASH_SIZE], void *data, size_t length);
   struct bucket_t *bucket;
 };
 
@@ -144,7 +146,7 @@ node_sort(const void* a, const void *b) {
 
 static bool
 bucket_contains(bucket_t *root, node_t *node){
-  return memcmp(root->max, node->id, DHT_HASH_SIZE) > 0 && 
+  return memcmp(root->max, node->id, DHT_HASH_SIZE) > 0 &&
         (root->next == NULL || memcmp(root->next->max, node->id, DHT_HASH_SIZE) <= 0);
 }
 
@@ -461,16 +463,30 @@ dht_set(dht_t *dht, void *data, size_t len, dht_get_callback success, dht_failur
   return ret;
 }
 
+static ssize_t
+search_idx(dht_t *dht, uint8_t token[DHT_HASH_SIZE]) {
+  for(int i = 0; dht->search_len; i++) {
+    if(crypto_verify_32(dht->searches[dht->search_idx[i]].token, token)){
+      return i;
+    }
+  }
+  return -1;
+}
+
+
+static search_t *
+find_search(dht_t *dht, uint8_t token[DHT_HASH_SIZE]) {
+  ssize_t idx = search_idx(dht, token);
+  return idx == -1 ? NULL : &dht->searches[idx];
+}
+
 static void
 kill_search(dht_t *dht, int idx) {
-  search_t search = dht->searches[dht->search_idx[idx]];
   uint16_t tmp = dht->search_idx[dht->search_len - 1];
   dht->search_idx[dht->search_len - 1] = dht->search_idx[idx];
   dht->search_idx[idx] = tmp;
   dht->search_len--;
-  search.error(search.data);
 }
-
 
 #define MAX_SIZE 1500
 
@@ -481,9 +497,10 @@ dht_run(dht_t *dht, int timeout) {
     search_t search = dht->searches[dht->search_idx[i]];
     if(time(NULL) - search.sent > 60) {
       kill_search(dht, i);
+      search.error(search.data);
     }
   }
-  
+
   node_t *node = NULL;
   struct pollfd fd = {0};
   fd.fd = dht->socket;
@@ -491,7 +508,7 @@ dht_run(dht_t *dht, int timeout) {
   poll(&fd, 1, timeout);
 
   if(!(fd.revents & POLLIN)) return 0;
-  
+
   uint8_t buf[MAX_SIZE] = {0};
   struct sockaddr_storage addr = {0};
   socklen_t len;
@@ -511,16 +528,8 @@ dht_run(dht_t *dht, int timeout) {
      request->type == 'h' ||
      request->type == 'i' ||
      request->type == 't') {
-    bool killed = false;
-    for(int i = 0; dht->search_len; i++) {
-      if(crypto_verify_32(dht->searches[dht->search_idx[i]].token, request->token)){
-        kill_search(dht, i);
-        killed = true;
-        break;
-      }
-    }
     // we don't recognize this search, bail
-    if(!killed) goto cleanup;
+    if(search_idx(dht, request->token) == -1) goto cleanup;
   }
 
   node = find_node(dht, request->id);
@@ -542,11 +551,31 @@ dht_run(dht_t *dht, int timeout) {
       compress_and_send(dht, node, (uint8_t *)&resp, sizeof(resp));
       break;
     }
-    case 'o':
+    case 'o': {
+      kill_search(dht, search_idx(dht, request->token));
       break;
-
+    }
     case 'g': { // get
-
+      uint8_t key[DHT_HASH_SIZE] = {0};
+      memcpy(key, big + sizeof(request_t), DHT_HASH_SIZE);
+      if(dht->lookup) {
+        void *value = NULL;
+        ssize_t ret = dht->lookup(key, &value);
+        if(ret > 0) {
+          request_t resp = { .type = 'h' };
+          memcpy(resp.id, dht->id, DHT_HASH_SIZE);
+          memcpy(resp.token, request->token, DHT_HASH_SIZE);
+          uint8_t *buf = calloc(1, sizeof(resp) + ret);
+          if(!buf) goto cleanup;
+          memcpy(buf, (void *)&resp, sizeof(resp));
+          memcpy(buf + sizeof(resp), value, ret);
+          compress_and_send(dht, node, buf, sizeof(resp) + ret);
+          free(buf);
+          break;
+        }
+      } else {
+        // return 8 nearest nodes
+      }
       break;
     }
     case 'h': // get response found
@@ -560,10 +589,9 @@ dht_run(dht_t *dht, int timeout) {
   }
 
   bucket_update(dht->bucket);
-
+  free(big);
   return 0;
 cleanup:
   free(big);
-  if(node) free(node);
   return -1;
 }
