@@ -10,3 +10,7 @@ test/*.gcda
 *.o
 *.d
 build/
+GTAGS
+TAGS
+GPATH
+GRTAGS

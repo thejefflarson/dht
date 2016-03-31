@@ -62,7 +62,7 @@ typedef struct {
 
 typedef struct {
   uint8_t target[DHT_HASH_SIZE];
-  node_t *closest[8];
+  node_t **closest;
   size_t closest_len;
 } find_state_t;
 
@@ -273,7 +273,7 @@ bucket_insert(bucket_t *root, node_t *node) {
 }
 
 static void
-bucket_walk(void *ctx, bucket_t *root, bucket_walk_callback cb) {
+bucket_walk(void *ctx, bucket_t *root, const bucket_walk_callback cb) {
   while(cb(ctx, root) == 0 && root->next != NULL) {
     root = root->next;
   }
@@ -326,7 +326,9 @@ find_walker(void *ctx, bucket_t *root){
           state->closest_len++;
         }
 
-        //memmove(state->closest + j, )
+        memmove(state->closest + j + 1, state->closest + j, sizeof(node_t*) * (state->closest_len - j - 1));
+        state->closest[j] = root->nodes[i];
+        break;
       }
     }
   }
@@ -334,19 +336,25 @@ find_walker(void *ctx, bucket_t *root){
   return 0;
 }
 
-static node_t *
-find_node(dht_t *dht, uint8_t key[DHT_HASH_SIZE]) {
-  if(dht->bucket->length == 0) return NULL;
+static void
+find_nodes(node_t *nodes[8], const bucket_t *root, const uint8_t key[DHT_HASH_SIZE]) {
+  if(root->length == 0) return;
 
-  find_state_t state = {0};
-
-  state.closest[0] = dht->bucket->nodes[0];
+  find_state_t state;
+  memset(&state, 0, sizeof(state));
+  state.closest = nodes;
+  state.closest[0] = root->nodes[0];
   state.closest_len++;
   memcpy(state.target, key, DHT_HASH_SIZE);
 
-  bucket_walk((void *) &state, dht->bucket, find_walker);
+  bucket_walk((void *) &state, (bucket_t *)root, find_walker);
+}
 
-  return state.closest[0];
+static node_t*
+find_node(const dht_t *dht, const uint8_t key[DHT_HASH_SIZE]) {
+  node_t *nodes[8] = {0};
+  find_nodes(nodes, dht->bucket, key);
+  return nodes[0];
 }
 
 dht_t *
@@ -582,7 +590,7 @@ dht_run(dht_t *dht, int timeout) {
           break;
         }
       } else {
-        // return 8 nearest nodes
+        
       }
       break;
     }

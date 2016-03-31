@@ -24,10 +24,11 @@ test_bucket_insert(){
   ok(bucket != NULL, "bucket is not null");
   int ins = 0;
   struct sockaddr_storage st = {0};
+  node_t *node;
   for(int i = 0; i < 100; i++){
     uint8_t buf[DHT_HASH_SIZE];
     randombytes(buf, DHT_HASH_SIZE);
-    node_t *node = node_new(buf, &st);
+    node = node_new(buf, &st);
     bucket_t *nins = bucket_insert(bucket, node);
     if(!nins) {
       node_free(node);
@@ -35,6 +36,9 @@ test_bucket_insert(){
       ins++;
     }
   }
+  node_t *nodes[8];
+  find_nodes(nodes, bucket, node->id);
+  ok(nodes[0] == node, "found the right node");
   int j = 0;
   bucket_walk(&j, bucket, _walker);
   bucket_free(bucket);
