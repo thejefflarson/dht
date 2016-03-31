@@ -42,6 +42,7 @@ typedef struct {
   dht_failure_callback error;
 } search_t;
 
+
 #define MAX_SEARCH 1024
 struct dht_s {
   int socket;
@@ -336,9 +337,9 @@ find_walker(void *ctx, bucket_t *root){
   return 0;
 }
 
-static void
+static size_t
 find_nodes(node_t *nodes[8], const bucket_t *root, const uint8_t key[DHT_HASH_SIZE]) {
-  if(root->length == 0) return;
+  if(root->length == 0) return 0;
 
   find_state_t state;
   memset(&state, 0, sizeof(state));
@@ -348,13 +349,16 @@ find_nodes(node_t *nodes[8], const bucket_t *root, const uint8_t key[DHT_HASH_SI
   memcpy(state.target, key, DHT_HASH_SIZE);
 
   bucket_walk((void *) &state, (bucket_t *)root, find_walker);
+  return state.closest_len;
 }
 
 static node_t*
 find_node(const dht_t *dht, const uint8_t key[DHT_HASH_SIZE]) {
   node_t *nodes[8] = {0};
-  find_nodes(nodes, dht->bucket, key);
-  return nodes[0];
+  size_t ret = find_nodes(nodes, dht->bucket, key);
+  if(ret > 0)
+    return nodes[0];
+  return NULL;
 }
 
 dht_t *
@@ -573,14 +577,15 @@ dht_run(dht_t *dht, int timeout) {
     }
     case 'g': { // get
       uint8_t key[DHT_HASH_SIZE] = {0};
+      if(big_len - sizeof(request_t) != DHT_HASH_SIZE) break;
       memcpy(key, big + sizeof(request_t), DHT_HASH_SIZE);
+      request_t resp = { .type = 'h' };
+      memcpy(resp.id, dht->id, DHT_HASH_SIZE);
+      memcpy(resp.token, request->token, DHT_HASH_SIZE);
       if(dht->lookup) {
         void *value = NULL;
         ssize_t ret = dht->lookup(key, &value);
         if(ret > 0) {
-          request_t resp = { .type = 'h' };
-          memcpy(resp.id, dht->id, DHT_HASH_SIZE);
-          memcpy(resp.token, request->token, DHT_HASH_SIZE);
           uint8_t *buf = calloc(1, sizeof(resp) + ret);
           if(!buf) goto cleanup;
           memcpy(buf, (void *)&resp, sizeof(resp));
@@ -589,9 +594,14 @@ dht_run(dht_t *dht, int timeout) {
           free(buf);
           break;
         }
-      } else {
-        
       }
+      resp.type = 'i';
+      node_t *nodes[8];
+      size_t found = find_nodes(nodes, dht->bucket, key);
+      int bytes = 0;
+      // count num bytes
+      uint8_t *buf = calloc(1, sizeof(resp) + bytes);
+      // append ip address
       break;
     }
     case 'h': // get response found
