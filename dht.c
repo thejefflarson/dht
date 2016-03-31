@@ -62,6 +62,13 @@ typedef struct {
 } __attribute__((packed)) request_t;
 
 typedef struct {
+  char type;
+  uint8_t id[DHT_HASH_SIZE];
+  uint64_t ip;
+  uint16_t port;
+} __attribute__((packed)) ip_t;
+
+typedef struct {
   uint8_t target[DHT_HASH_SIZE];
   node_t **closest;
   size_t closest_len;
@@ -598,9 +605,10 @@ dht_run(dht_t *dht, int timeout) {
       resp.type = 'i';
       node_t *nodes[8];
       size_t found = find_nodes(nodes, dht->bucket, key);
-      int bytes = 0;
       // count num bytes
-      uint8_t *buf = calloc(1, sizeof(resp) + bytes);
+      uint8_t *buf = calloc(1, sizeof(resp) + found * sizeof(ip_t));
+      if(!buf) goto cleanup;
+      
       // append ip address
       break;
     }
