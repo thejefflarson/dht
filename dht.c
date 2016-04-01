@@ -44,7 +44,6 @@ typedef struct {
   dht_failure_callback error;
 } search_t;
 
-
 #define MAX_SEARCH 1024
 struct dht_s {
   int socket;
