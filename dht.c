@@ -51,8 +51,8 @@ struct dht_s {
   search_t searches[MAX_SEARCH];
   uint16_t search_idx[MAX_SEARCH];
   uint16_t search_len;
-  ssize_t (*lookup)(uint8_t key[DHT_HASH_SIZE], void **data);
-  int (*store)(uint8_t key[DHT_HASH_SIZE], void *data, size_t length);
+  ssize_t (*lookup)(const uint8_t key[DHT_HASH_SIZE], void **data);
+  int (*store)(const uint8_t key[DHT_HASH_SIZE], void *data, size_t length);
   struct bucket_t *bucket;
 };
 
@@ -422,7 +422,8 @@ dht_close(dht_t *dht) {
 }
 
 search_t *
-get_search(dht_t *dht, const uint8_t key[DHT_HASH_SIZE], dht_get_callback success, dht_failure_callback error, void *closure) {
+get_search(dht_t *dht, const uint8_t key[DHT_HASH_SIZE],
+           dht_get_callback success, dht_failure_callback error, void *closure) {
   if(dht->search_len + 1 >= MAX_SEARCH) return NULL;
   search_t *to_search = &dht->searches[dht->search_idx[dht->search_len]];
   randombytes(to_search->token, DHT_HASH_SIZE);
@@ -436,7 +437,8 @@ get_search(dht_t *dht, const uint8_t key[DHT_HASH_SIZE], dht_get_callback succes
 }
 
 int
-compress_and_send(const dht_t *dht, const node_t *node, const uint8_t *buf, const size_t len) {
+compress_and_send(const dht_t *dht, const node_t *node,
+                  const uint8_t *buf, const size_t len) {
   uint8_t *comp = (uint8_t *) calloc(1, len);
   if(!comp) return -1;
   size_t length;
@@ -452,7 +454,8 @@ compress_and_send(const dht_t *dht, const node_t *node, const uint8_t *buf, cons
 };
 
 int
-dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE], dht_get_callback success, dht_failure_callback error, void *closure) {
+dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE],
+        dht_get_callback success, dht_failure_callback error, void *closure) {
   node_t *node = find_node(dht, key);
   if(!node) return -1;
   search_t *to_search = get_search(dht, key, success, error, closure);
@@ -469,7 +472,8 @@ dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE], dht_get_callback success, dht_fa
 }
 
 int
-dht_set(dht_t *dht, void *data, size_t len, dht_get_callback success, dht_failure_callback error, void *closure) {
+dht_set(dht_t *dht, void *data, size_t len, dht_get_callback success,
+        dht_failure_callback error, void *closure) {
   uint8_t key[DHT_HASH_SIZE] = {0};
   int ret = blake2(key, data, NULL, DHT_HASH_SIZE, len, 0);
   if(ret == -1) return ret;
@@ -531,6 +535,40 @@ fill_ip(ip_t *ip, const node_t *node) {
 }
 
 #define MAX_SIZE 1500
+
+int
+create_get(dht_t* dht,
+           const uint8_t token[DHT_HASH_SIZE],
+           const uint8_t key[DHT_HASH_SIZE],
+           uint8_t **buf) {
+  request_t resp = { .type = 'h' };
+  memcpy(resp.id, dht->id, DHT_HASH_SIZE);
+  memcpy(resp.token, token, DHT_HASH_SIZE);
+  if(dht->lookup) {
+    void *value = NULL;
+    ssize_t ret = dht->lookup(key, &value);
+    if(ret > 0) {
+      *buf = calloc(1, sizeof(resp) + ret);
+      if(!*buf) return -1;
+      memcpy(*buf, (void *)&resp, sizeof(resp));
+      memcpy(*buf + sizeof(resp), value, ret);
+      return 0;
+    }
+  }
+  resp.type = 'i';
+  node_t *nodes[8];
+  size_t found = find_nodes(nodes, dht->bucket, key);
+  // count num bytes
+  *buf = calloc(1, sizeof(resp) + found * sizeof(ip_t));
+  if(!*buf) return -1;
+  memcpy(*buf, &resp, sizeof(resp));
+  for(int i = 0; i < 8; i++) {
+    ip_t ip = {0};
+    fill_ip(&ip, nodes[i]);
+    memcpy(*buf + sizeof(resp) + sizeof(ip_t) * i, &ip, sizeof(ip));
+  }
+  return 0;
+}
 
 int
 dht_run(dht_t *dht, int timeout) {
@@ -601,35 +639,13 @@ dht_run(dht_t *dht, int timeout) {
       uint8_t key[DHT_HASH_SIZE] = {0};
       if(big_len - sizeof(request_t) != DHT_HASH_SIZE) break;
       memcpy(key, big + sizeof(request_t), DHT_HASH_SIZE);
-      request_t resp = { .type = 'h' };
-      memcpy(resp.id, dht->id, DHT_HASH_SIZE);
-      memcpy(resp.token, request->token, DHT_HASH_SIZE);
-      if(dht->lookup) {
-        void *value = NULL;
-        ssize_t ret = dht->lookup(key, &value);
-        if(ret > 0) {
-          uint8_t *buf = calloc(1, sizeof(resp) + ret);
-          if(!buf) goto cleanup;
-          memcpy(buf, (void *)&resp, sizeof(resp));
-          memcpy(buf + sizeof(resp), value, ret);
-          compress_and_send(dht, node, buf, sizeof(resp) + ret);
-          free(buf);
-          break;
-        }
+      uint8_t *buf = NULL;
+      if(create_get(dht, request->token, key, &buf) == -1) {
+        compress_and_send(dht, node, (uint8_t *)buf, sizeof(buf));
+        free(buf);
+      } else {
+        goto cleanup;
       }
-      resp.type = 'i';
-      node_t *nodes[8];
-      size_t found = find_nodes(nodes, dht->bucket, key);
-      // count num bytes
-      uint8_t *buf = calloc(1, sizeof(resp) + found * sizeof(ip_t));
-      if(!buf) goto cleanup;
-      memcpy(buf, &resp, sizeof(resp));
-      for(int i = 0; i < 8; i++) {
-        ip_t ip = {0};
-        fill_ip(&ip, nodes[i]);
-        memcpy(buf + sizeof(resp) + sizeof(ip_t) * i, &ip, sizeof(ip));
-      }
-      compress_and_send(dht, node, (uint8_t *)&buf, sizeof(buf));
       break;
     }
     case 'h': // get response found
