@@ -2,6 +2,8 @@
 #include <fcntl.h>
 #include <netdb.h>
 #include <netinet/in.h>
+#include <netinet/ip.h>
+#include <netinet/ip6.h>
 #include <poll.h>
 #include <time.h>
 #include <stdbool.h>
@@ -19,7 +21,7 @@
 
 #include "dht.h"
 
-typedef struct dh_node_t {
+typedef struct {
   uint8_t id[DHT_HASH_SIZE];
   time_t created_at;
   time_t last_heard;
@@ -64,7 +66,7 @@ typedef struct {
 typedef struct {
   char type;
   uint8_t id[DHT_HASH_SIZE];
-  uint64_t ip;
+  uint8_t ip[16];
   uint16_t port;
 } __attribute__((packed)) ip_t;
 
@@ -362,7 +364,7 @@ find_nodes(node_t *nodes[8], const bucket_t *root, const uint8_t key[DHT_HASH_SI
 static node_t*
 find_node(const dht_t *dht, const uint8_t key[DHT_HASH_SIZE]) {
   node_t *nodes[8] = {0};
-  size_t ret = find_nodes(nodes, dht->bucket, key);
+  size_t ret = find_nodes(nodes, (const bucket_t*) dht->bucket, key);
   if(ret > 0)
     return nodes[0];
   return NULL;
@@ -515,6 +517,20 @@ kill_search(dht_t *dht, int idx) {
   dht->search_len--;
 }
 
+static void
+fill_ip(ip_t *ip, const node_t *node) {
+  ip->type = node->address.ss_family == AF_INET ? '4' : '6';
+  switch(ip->type) {
+    case('4'):
+      memcpy(ip->ip, (void*) &((struct sockaddr_in *) &node->address)->sin_addr.s_addr, sizeof(uint32_t));
+      break;
+    case('6'):
+      memcpy(ip->ip, ((struct sockaddr_in6 *) &node->address)->sin6_addr.s6_addr, sizeof(uint32_t));
+      break;
+  }
+  ip->port = htonl(((struct sockaddr_in *) &node->address)->sin_port);
+}
+
 #define MAX_SIZE 1500
 
 int
@@ -608,8 +624,13 @@ dht_run(dht_t *dht, int timeout) {
       // count num bytes
       uint8_t *buf = calloc(1, sizeof(resp) + found * sizeof(ip_t));
       if(!buf) goto cleanup;
-      
-      // append ip address
+      memcpy(buf, &resp, sizeof(resp));
+      for(int i = 0; i < 8; i++) {
+        ip_t ip = {0};
+        fill_ip(&ip, nodes[i]);
+        memcpy(buf + sizeof(resp) + sizeof(ip_t) * i, &ip, sizeof(ip));
+      }
+      compress_and_send(dht, node, (uint8_t *)&buf, sizeof(buf));
       break;
     }
     case 'h': // get response found
