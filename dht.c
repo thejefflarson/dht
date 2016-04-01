@@ -640,7 +640,7 @@ dht_run(dht_t *dht, int timeout) {
       if(big_len - sizeof(request_t) != DHT_HASH_SIZE) break;
       memcpy(key, big + sizeof(request_t), DHT_HASH_SIZE);
       uint8_t *buf = NULL;
-      if(create_get_response(dht, request->token, key, &buf) == -1) {
+      if(create_get_response(dht, request->token, key, &buf) == 0) {
         compress_and_send(dht, node, (uint8_t *)buf, sizeof(buf));
         free(buf);
       } else {
