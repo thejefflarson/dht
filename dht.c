@@ -537,7 +537,7 @@ fill_ip(ip_t *ip, const node_t *node) {
 #define MAX_SIZE 1500
 
 int
-create_get(dht_t* dht,
+create_get_response(dht_t* dht,
            const uint8_t token[DHT_HASH_SIZE],
            const uint8_t key[DHT_HASH_SIZE],
            uint8_t **buf) {
@@ -640,7 +640,7 @@ dht_run(dht_t *dht, int timeout) {
       if(big_len - sizeof(request_t) != DHT_HASH_SIZE) break;
       memcpy(key, big + sizeof(request_t), DHT_HASH_SIZE);
       uint8_t *buf = NULL;
-      if(create_get(dht, request->token, key, &buf) == -1) {
+      if(create_get_response(dht, request->token, key, &buf) == -1) {
         compress_and_send(dht, node, (uint8_t *)buf, sizeof(buf));
         free(buf);
       } else {
