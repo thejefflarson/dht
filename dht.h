@@ -12,7 +12,7 @@ dht_t *
 dht_new(int port);
 
 typedef void
-(*dht_get_callback)(void *closure, uint8_t node_id[DHT_HASH_SIZE], uint8_t *data, size_t length);
+(*dht_get_callback)(void *closure, uint8_t key[DHT_HASH_SIZE], uint8_t *data, size_t length);
 
 typedef void
 (*dht_failure_callback)(void *closure);

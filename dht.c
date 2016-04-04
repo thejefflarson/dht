@@ -650,8 +650,12 @@ dht_run(dht_t *dht, int timeout) {
       }
       break;
     }
-    case 'h': // get response found
+    case 'h':{ // get response found
+      search_t *search = find_search(dht, request->token);
+      search->success(search->data, search->key, big + sizeof(request_t), big_len - sizeof(request_t));
+      kill_search(dht, search_idx(dht, search->token));
       break;
+    }
     case 'i': // get response not found
       break;
     case 's': // set
