@@ -653,9 +653,11 @@ dht_run(dht_t *dht, int timeout) {
     case 'h':{ // get response found
       search_t *search = find_search(dht, request->token);
       uint8_t key[DHT_HASH_SIZE];
-      int ret = blake2(key, big + sizeof(request_t), NULL, DHT_HASH_SIZE, big_len - sizeof(request_t), 0);
+      uint8_t *data = big + sizeof(request_t);
+      size_t len = big_len - sizeof(request_t);
+      int ret = blake2(key, data, NULL, DHT_HASH_SIZE, len, 0);
       if(ret != -1 && crypto_verify_32(key, search->key) == 0) {
-        search->success(search->data, search->key, big + sizeof(request_t), big_len - sizeof(request_t));
+        search->success(search->data, search->key, data, len);
       } else {
         search->error(search->data);
       }
