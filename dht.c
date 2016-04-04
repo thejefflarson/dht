@@ -652,12 +652,25 @@ dht_run(dht_t *dht, int timeout) {
     }
     case 'h':{ // get response found
       search_t *search = find_search(dht, request->token);
-      search->success(search->data, search->key, big + sizeof(request_t), big_len - sizeof(request_t));
+      uint8_t key[DHT_HASH_SIZE];
+      int ret = blake2(key, big + sizeof(request_t), NULL, DHT_HASH_SIZE, big_len - sizeof(request_t), 0);
+      if(ret != -1 && crypto_verify_32(key, search->key) == 0) {
+        search->success(search->data, search->key, big + sizeof(request_t), big_len - sizeof(request_t));
+      } else {
+        search->error(search->data);
+      }
       kill_search(dht, search_idx(dht, search->token));
       break;
     }
-    case 'i': // get response not found
+    case 'i': { // get response not found
+      for(int i = 0; i < 8; i++) {
+        // TODO: insert nodes
+      }
+      search_t *search = find_search(dht, request->token);
+      kill_search(dht, search_idx(dht, search->token));
+      dht_get(dht, search->key, search->success, search->error, search->data);
       break;
+    }
     case 's': // set
       break;
     case 't': // set response
