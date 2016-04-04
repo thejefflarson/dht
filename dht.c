@@ -36,7 +36,7 @@ typedef struct bucket_t {
 } bucket_t;
 
 typedef struct {
-  uint8_t token[DHT_HASH_SIZE];
+  uint64_t token;
   uint8_t key[DHT_HASH_SIZE];
   time_t sent;
   void* data;
@@ -58,7 +58,7 @@ struct dht_s {
 
 typedef struct {
   char type;
-  uint8_t token[DHT_HASH_SIZE];
+  uint64_t token;
   uint8_t id[DHT_HASH_SIZE];
 } __attribute__((packed)) request_t;
 
@@ -426,7 +426,7 @@ get_search(dht_t *dht, const uint8_t key[DHT_HASH_SIZE],
            dht_get_callback success, dht_failure_callback error, void *closure) {
   if(dht->search_len + 1 >= MAX_SEARCH) return NULL;
   search_t *to_search = &dht->searches[dht->search_idx[dht->search_len]];
-  randombytes(to_search->token, DHT_HASH_SIZE);
+  randombytes((uint8_t*)to_search->token, sizeof(to_search->token));
   if(key) memcpy(to_search->key, key, DHT_HASH_SIZE);
   to_search->success = success;
   to_search->error = error;
@@ -462,7 +462,7 @@ dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE],
   if(!to_search) return -1;
 
   request_t get = { .type = 'g' };
-  memcpy(get.token, to_search->token, DHT_HASH_SIZE);
+  get.token = to_search->token;
   memcpy(get.id, dht->id, DHT_HASH_SIZE);
   uint8_t buf[sizeof(get) + DHT_HASH_SIZE] = {0};
   memcpy(buf, &get, sizeof(get));
@@ -483,7 +483,7 @@ dht_set(dht_t *dht, void *data, size_t len, dht_get_callback success,
   if(!to_search) return -1;
 
   request_t set = { .type = 's' };
-  memcpy(set.token, to_search->token, DHT_HASH_SIZE);
+  set.token = to_search->token;
   memcpy(set.id, dht->id, DHT_HASH_SIZE);
 
   uint8_t *buf = calloc(1, sizeof(set) + DHT_HASH_SIZE + len);
@@ -497,9 +497,9 @@ dht_set(dht_t *dht, void *data, size_t len, dht_get_callback success,
 }
 
 static ssize_t
-search_idx(dht_t *dht, uint8_t token[DHT_HASH_SIZE]) {
+search_idx(dht_t *dht, uint64_t token) {
   for(int i = 0; dht->search_len; i++) {
-    if(crypto_verify_32(dht->searches[dht->search_idx[i]].token, token)){
+    if(dht->searches[dht->search_idx[i]].token == token){
       return i;
     }
   }
@@ -507,7 +507,7 @@ search_idx(dht_t *dht, uint8_t token[DHT_HASH_SIZE]) {
 }
 
 static search_t *
-find_search(dht_t *dht, uint8_t token[DHT_HASH_SIZE]) {
+find_search(dht_t *dht, uint64_t token) {
   ssize_t idx = search_idx(dht, token);
   return idx == -1 ? NULL : &dht->searches[idx];
 }
@@ -527,9 +527,11 @@ fill_ip(ip_t *ip, const node_t *node) {
     case('4'):
       memcpy(ip->ip, (void*) &((struct sockaddr_in *) &node->address)->sin_addr.s_addr, sizeof(uint32_t));
       break;
-    case('6'):
-      memcpy(ip->ip, ((struct sockaddr_in6 *) &node->address)->sin6_addr.s6_addr, sizeof(uint32_t));
+    case('6'): {
+      uint8_t *addr = ((struct sockaddr_in6 *) &node->address)->sin6_addr.s6_addr;
+      memcpy(ip->ip, addr, sizeof(16));
       break;
+    }
   }
   ip->port = htonl(((struct sockaddr_in *) &node->address)->sin_port);
 }
@@ -538,12 +540,12 @@ fill_ip(ip_t *ip, const node_t *node) {
 
 int
 create_get_response(dht_t* dht,
-           const uint8_t token[DHT_HASH_SIZE],
+           const uint64_t token,
            const uint8_t key[DHT_HASH_SIZE],
            uint8_t **buf) {
   request_t resp = { .type = 'h' };
   memcpy(resp.id, dht->id, DHT_HASH_SIZE);
-  memcpy(resp.token, token, DHT_HASH_SIZE);
+  resp.token = token;
   if(dht->lookup) {
     void *value = NULL;
     ssize_t ret = dht->lookup(key, &value);
@@ -627,7 +629,7 @@ dht_run(dht_t *dht, int timeout) {
     case 'p': { // ping
       request_t resp = { .type = 'o' };
       memcpy(resp.id, dht->id, DHT_HASH_SIZE);
-      memcpy(resp.token, request->token, DHT_HASH_SIZE);
+      resp.token = request->token;
       compress_and_send(dht, node, (uint8_t *)&resp, sizeof(resp));
       break;
     }
