@@ -522,18 +522,40 @@ kill_search(dht_t *dht, int idx) {
 
 static void
 fill_ip(ip_t *ip, const node_t *node) {
+  memcpy(ip->id, node->id, DHT_HASH_SIZE);
   ip->type = node->address.ss_family == AF_INET ? '4' : '6';
   switch(ip->type) {
-    case('4'):
-      memcpy(ip->ip, (void*) &((struct sockaddr_in *) &node->address)->sin_addr.s_addr, sizeof(uint32_t));
+    case('4'): {
+      uint32_t nip = htonl(((struct sockaddr_in *) &node->address)->sin_addr.s_addr);
+      memcpy(ip->ip, (void*) &nip, sizeof(uint32_t));
       break;
+    }
     case('6'): {
       uint8_t *addr = ((struct sockaddr_in6 *) &node->address)->sin6_addr.s6_addr;
-      memcpy(ip->ip, addr, sizeof(16));
+      memcpy(ip->ip, addr, 16);
       break;
     }
   }
   ip->port = htonl(((struct sockaddr_in *) &node->address)->sin_port);
+}
+
+static void
+insert_from_ip(dht_t *dht, const ip_t *ip) {
+  struct sockaddr_storage address = {0};
+  switch(ip->type) {
+    case('4'):
+      ((struct sockaddr_in *) &address)->sin_addr.s_addr = ntohl((uint32_t) *ip->ip);
+      break;
+    case('6'): {
+      uint8_t *addr = ((struct sockaddr_in6 *) &address)->sin6_addr.s6_addr;
+      memcpy(addr, ip->ip, 16);
+      break;
+    }
+    default:
+      return;
+  }
+  node_t *node = node_new(ip->id, &address);
+  bucket_insert(dht->bucket, node);
 }
 
 #define MAX_SIZE 1500
@@ -638,8 +660,8 @@ dht_run(dht_t *dht, int timeout) {
       break;
     }
     case 'g': { // get
+      if(big_len != DHT_HASH_SIZE + sizeof(request_t)) break;
       uint8_t key[DHT_HASH_SIZE] = {0};
-      if(big_len - sizeof(request_t) != DHT_HASH_SIZE) break;
       memcpy(key, big + sizeof(request_t), DHT_HASH_SIZE);
       uint8_t *buf = NULL;
       if(create_get_response(dht, request->token, key, &buf) == 0) {
@@ -651,6 +673,7 @@ dht_run(dht_t *dht, int timeout) {
       break;
     }
     case 'h':{ // get response found
+      if(big_len <= sizeof(request_t) + DHT_HASH_SIZE) break;
       search_t *search = find_search(dht, request->token);
       uint8_t key[DHT_HASH_SIZE];
       uint8_t *data = big + sizeof(request_t);
@@ -665,8 +688,11 @@ dht_run(dht_t *dht, int timeout) {
       break;
     }
     case 'i': { // get response not found
+      if(big_len != sizeof(ip_t) * 8 + sizeof(request_t)) break;
+      uint8_t *data = big + sizeof(request_t);
       for(int i = 0; i < 8; i++) {
-        // TODO: insert nodes
+        ip_t *ip = (ip_t *)data + sizeof(request_t) * i;
+        insert_from_ip(dht, ip);
       }
       search_t *search = find_search(dht, request->token);
       kill_search(dht, search_idx(dht, search->token));
