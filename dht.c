@@ -65,7 +65,8 @@ typedef struct {
 typedef struct {
   char type;
   uint8_t id[DHT_HASH_SIZE];
-  uint8_t ip[16];
+  uint32_t ip4;
+  uint8_t ip6[16];
   uint16_t port;
 } __attribute__((packed)) ip_t;
 
@@ -526,13 +527,12 @@ fill_ip(ip_t *ip, const node_t *node) {
   ip->type = node->address.ss_family == AF_INET ? '4' : '6';
   switch(ip->type) {
     case('4'): {
-      uint32_t nip = htonl(((struct sockaddr_in *) &node->address)->sin_addr.s_addr);
-      memcpy(ip->ip, (void*) &nip, sizeof(uint32_t));
+      ip->ip4 = htonl(((struct sockaddr_in *) &node->address)->sin_addr.s_addr);
       break;
     }
     case('6'): {
       uint8_t *addr = ((struct sockaddr_in6 *) &node->address)->sin6_addr.s6_addr;
-      memcpy(ip->ip, addr, 16);
+      memcpy(ip->ip6, addr, 16);
       break;
     }
   }
@@ -544,11 +544,11 @@ insert_from_ip(dht_t *dht, const ip_t *ip) {
   struct sockaddr_storage address = {0};
   switch(ip->type) {
     case('4'):
-      ((struct sockaddr_in *) &address)->sin_addr.s_addr = ntohl((uint32_t) *ip->ip);
+      ((struct sockaddr_in *) &address)->sin_addr.s_addr = ntohl(ip->ip4);
       break;
     case('6'): {
       uint8_t *addr = ((struct sockaddr_in6 *) &address)->sin6_addr.s6_addr;
-      memcpy(addr, ip->ip, 16);
+      memcpy(addr, ip->ip6, 16);
       break;
     }
     default:
