@@ -21,6 +21,9 @@
 
 #include "dht.h"
 
+
+#pragma mark types
+
 typedef struct {
   uint8_t id[DHT_HASH_SIZE];
   time_t created_at;
@@ -106,6 +109,9 @@ randombytes(uint8_t *x, uint32_t xlen) {
   }
 }
 
+
+#pragma mark node
+
 static void
 xor(uint8_t target[DHT_HASH_SIZE], uint8_t a[DHT_HASH_SIZE], uint8_t b[DHT_HASH_SIZE]) {
   for(int i = 0; i < DHT_HASH_SIZE; i++) {
@@ -154,6 +160,9 @@ node_sort(const void* a, const void *b) {
     return 0;
   }
 }
+
+
+#pragma mark bucket
 
 static bool
 bucket_contains(bucket_t *root, node_t *node){
@@ -370,6 +379,9 @@ find_node(const dht_t *dht, const uint8_t key[DHT_HASH_SIZE]) {
   return NULL;
 }
 
+
+#pragma mark dht
+
 dht_t *
 dht_new(int port) {
   dht_t *dht = calloc(1, sizeof(dht_t));
@@ -381,6 +393,7 @@ dht_new(int port) {
   }
 
   randombytes(dht->id, DHT_HASH_SIZE);
+
 
   struct addrinfo hints = {0}, *res = NULL;
   hints.ai_family = AF_UNSPEC;
@@ -632,6 +645,7 @@ dht_run(dht_t *dht, int timeout) {
      request->type == 'h' ||
      request->type == 'i' ||
      request->type == 't') {
+
     // we don't recognize this search, bail
     if(search_idx(dht, request->token) == -1) goto cleanup;
   }
@@ -696,6 +710,7 @@ dht_run(dht_t *dht, int timeout) {
       }
       search_t *search = find_search(dht, request->token);
       kill_search(dht, search_idx(dht, search->token));
+      // TODO: test to make sure we're not asking the same id again.
       dht_get(dht, search->key, search->success, search->error, search->data);
       break;
     }
@@ -712,3 +727,4 @@ cleanup:
   free(big);
   return -1;
 }
+
