@@ -586,7 +586,7 @@ create_get_response(dht_t* dht,
   *buf = calloc(1, sizeof(resp) + found * sizeof(ip_t));
   if(!*buf) return -1;
   memcpy(*buf, &resp, sizeof(resp));
-  for(int i = 0; i < 8; i++) {
+  for(size_t i = 0; i < found; i++) {
     ip_t ip = {0};
     fill_ip(&ip, nodes[i]);
     memcpy(*buf + sizeof(resp) + sizeof(ip_t) * i, &ip, sizeof(ip));
@@ -688,9 +688,9 @@ dht_run(dht_t *dht, int timeout) {
       break;
     }
     case 'i': { // get response not found
-      if(big_len != sizeof(ip_t) * 8 + sizeof(request_t)) break;
+      if(big_len <= sizeof(request_t)) break;
       uint8_t *data = big + sizeof(request_t);
-      for(int i = 0; i < 8; i++) {
+      for(int i = 0; i < (big_len - sizeof(request_t)) / sizeof(ip_t); i++) {
         ip_t *ip = (ip_t *)data + sizeof(request_t) * i;
         insert_from_ip(dht, ip);
       }
