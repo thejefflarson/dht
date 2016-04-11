@@ -1,5 +1,6 @@
 #include <errno.h>
 #include <fcntl.h>
+#include <limits.h>
 #include <netdb.h>
 #include <netinet/in.h>
 #include <netinet/ip.h>
@@ -38,9 +39,11 @@ typedef struct bucket_t {
   struct bucket_t *next;
 } bucket_t;
 
+#define FILTER_SIZE 64
 typedef struct {
   uint64_t token;
   uint8_t key[DHT_HASH_SIZE];
+  uint8_t filter[FILTER_SIZE];
   time_t sent;
   void* data;
   dht_get_callback success;
@@ -83,6 +86,9 @@ typedef int (*bucket_walk_callback)(void *ctx, bucket_t *root);
 
 static int fd = -1;
 
+
+#pragma mark utils
+
 void
 randombytes(uint8_t *x, uint32_t xlen) {
   int i;
@@ -110,7 +116,29 @@ randombytes(uint8_t *x, uint32_t xlen) {
 }
 
 
-#pragma mark node
+#pragma mark filter
+
+#define hasher(key, i) ((uint32_t) *(key + sizeof(uint32_t) * i)) % (CHAR_BIT * FILTER_SIZE)
+void
+filter_add(uint8_t filter[FILTER_SIZE], uint8_t key[DHT_HASH_SIZE]) {
+  for(int i = 0; i < 4; i++) {
+    uint16_t hash = hasher(key, i);
+    filter[hash / CHAR_BIT] |= (1 << hash % CHAR_BIT); 
+  }
+}
+
+bool
+filter_includes(uint8_t filter[FILTER_SIZE], uint8_t key[DHT_HASH_SIZE]) {
+  bool ret = true;
+  for(int i = 0; i < 4; i++) {
+    uint16_t hash = hasher(key, i);
+    ret = ret && (0 != (filter[hash / CHAR_BIT] & (1 << hash % CHAR_BIT)));
+  }
+  return ret;
+}
+
+
+#pragma mark math
 
 static void
 xor(uint8_t target[DHT_HASH_SIZE], uint8_t a[DHT_HASH_SIZE], uint8_t b[DHT_HASH_SIZE]) {
@@ -118,6 +146,41 @@ xor(uint8_t target[DHT_HASH_SIZE], uint8_t a[DHT_HASH_SIZE], uint8_t b[DHT_HASH_
     target[i] = a[i] ^ b[i];
   }
 }
+
+static int
+add_ids(const uint8_t a[DHT_HASH_SIZE], const uint8_t b[DHT_HASH_SIZE], uint8_t c[DHT_HASH_SIZE]) {
+  uint8_t carry = 0;
+  for(int i = DHT_HASH_SIZE - 1; i >= 0; i--){
+    uint16_t res = (uint16_t)a[i] + (uint16_t)b[i] + carry;
+    carry = res > 0xFF ? 1 : 0;
+    c[i] = carry ? res - (0xFF + 1) : res;
+  }
+  return carry > 0 ? -1 : 0;
+}
+
+static int
+subtract_ids(const uint8_t a[DHT_HASH_SIZE], const uint8_t b[DHT_HASH_SIZE], uint8_t c[DHT_HASH_SIZE]) {
+  int carry = 0;
+  for(int i = DHT_HASH_SIZE - 1; i >= 0; i--){
+    int res = (int)a[i] - (int)b[i] + carry;
+    carry = res < 0 ? -1 : 0;
+    c[i] = carry == -1 ? (0xFF + 1) + res : res;
+  }
+  return carry < 0 ? -1 : 0;
+}
+
+static void
+divide_by_two(const uint8_t a[DHT_HASH_SIZE], uint8_t b[DHT_HASH_SIZE]) {
+  for(int i = DHT_HASH_SIZE - 1; i >= 0; i--) {
+    uint8_t it = a[i] >> 1;
+    if(i - 1 > 0 && a[i - 1] & 1)
+      it |= 0x80;
+    b[i] = it;
+  }
+}
+
+
+#pragma mark node
 
 static void
 node_update(node_t *node){
@@ -173,38 +236,6 @@ bucket_contains(bucket_t *root, node_t *node){
 static bool
 bucket_has_space(bucket_t *root){
   return root->length < 8;
-}
-
-static int
-add_ids(const uint8_t a[DHT_HASH_SIZE], const uint8_t b[DHT_HASH_SIZE], uint8_t c[DHT_HASH_SIZE]) {
-  uint8_t carry = 0;
-  for(int i = DHT_HASH_SIZE - 1; i >= 0; i--){
-    uint16_t res = (uint16_t)a[i] + (uint16_t)b[i] + carry;
-    carry = res > 0xFF ? 1 : 0;
-    c[i] = carry ? res - (0xFF + 1) : res;
-  }
-  return carry > 0 ? -1 : 0;
-}
-
-static int
-subtract_ids(const uint8_t a[DHT_HASH_SIZE], const uint8_t b[DHT_HASH_SIZE], uint8_t c[DHT_HASH_SIZE]) {
-  int carry = 0;
-  for(int i = DHT_HASH_SIZE - 1; i >= 0; i--){
-    int res = (int)a[i] - (int)b[i] + carry;
-    carry = res < 0 ? -1 : 0;
-    c[i] = carry == -1 ? (0xFF + 1) + res : res;
-  }
-  return carry < 0 ? -1 : 0;
-}
-
-static void
-divide_by_two(const uint8_t a[DHT_HASH_SIZE], uint8_t b[DHT_HASH_SIZE]) {
-  for(int i = DHT_HASH_SIZE - 1; i >= 0; i--) {
-    uint8_t it = a[i] >> 1;
-    if(i - 1 > 0 && a[i - 1] & 1)
-      it |= 0x80;
-    b[i] = it;
-  }
 }
 
 static int
@@ -394,7 +425,6 @@ dht_new(int port) {
 
   randombytes(dht->id, DHT_HASH_SIZE);
 
-
   struct addrinfo hints = {0}, *res = NULL;
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_DGRAM;
@@ -467,6 +497,18 @@ compress_and_send(const dht_t *dht, const node_t *node,
   return ret;
 };
 
+static int
+send_get(dht_t* dht, search_t* to_search, node_t* node) {
+  request_t get = { .type = 'g' };
+  get.token = to_search->token;
+  memcpy(get.id, dht->id, DHT_HASH_SIZE);
+  uint8_t buf[sizeof(get) + DHT_HASH_SIZE] = {0};
+  memcpy(buf, &get, sizeof(get));
+  memcpy(buf + sizeof(get), to_search->key, DHT_HASH_SIZE);
+  filter_add(to_search->filter, node->id);
+  return compress_and_send(dht, node, (uint8_t *)&buf, sizeof(buf));
+}
+
 int
 dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE],
         dht_get_callback success, dht_failure_callback error, void *closure) {
@@ -475,14 +517,7 @@ dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE],
   search_t *to_search = get_search(dht, key, success, error, closure);
   if(!to_search) return -1;
 
-  request_t get = { .type = 'g' };
-  get.token = to_search->token;
-  memcpy(get.id, dht->id, DHT_HASH_SIZE);
-  uint8_t buf[sizeof(get) + DHT_HASH_SIZE] = {0};
-  memcpy(buf, &get, sizeof(get));
-  memcpy(buf + sizeof(get), key, DHT_HASH_SIZE);
-
-  return compress_and_send(dht, node, (uint8_t *)&buf, sizeof(buf));
+  return send_get(dht, to_search, node);
 }
 
 int
@@ -649,11 +684,13 @@ dht_run(dht_t *dht, int timeout) {
     if(search_idx(dht, request->token) == -1) goto cleanup;
   }
 
-  if(request->type == 'h' ||
-     request->type == 'i' ||
+  if(request->type == 'g' ||
      request->type == 's') {
     // request too small
-    if(big_len <= sizeof(request_t) + DHT_HASH_SIZE) goto cleanup;
+    if(big_len < sizeof(request_t) + DHT_HASH_SIZE) goto cleanup;
+
+    if(request->type == 's')
+      if(big_len - sizeof(request_t) == 0) goto cleanup;
   }
 
   node = find_node(dht, request->id);
@@ -676,7 +713,6 @@ dht_run(dht_t *dht, int timeout) {
       break;
     }
     case 'g': { // get
-      if(big_len <= DHT_HASH_SIZE + sizeof(request_t)) break;
       uint8_t key[DHT_HASH_SIZE] = {0};
       memcpy(key, big + sizeof(request_t), DHT_HASH_SIZE);
       uint8_t *buf = NULL;
@@ -696,27 +732,25 @@ dht_run(dht_t *dht, int timeout) {
       int ret = blake2(key, data, NULL, DHT_HASH_SIZE, len, 0);
       if(ret != -1 && crypto_verify_32(key, search->key) == 0) {
         search->success(search->data, search->key, data, len);
-      } else {
-        search->error(search->data);
+        kill_search(dht, search_idx(dht, search->token));
       }
-      kill_search(dht, search_idx(dht, search->token));
       break;
     }
     case 'i': { // get response not found
-      if(big_len <= sizeof(request_t)) break;
       uint8_t *data = big + sizeof(request_t);
       for(size_t i = 0; i < (big_len - sizeof(request_t)) / sizeof(ip_t); i++) {
         ip_t *ip = (ip_t *)data + sizeof(request_t) * i;
         insert_from_ip(dht, ip);
       }
       search_t *search = find_search(dht, request->token);
-      kill_search(dht, search_idx(dht, search->token));
-      // TODO: test to make sure we're not asking the same id again.
-      dht_get(dht, search->key, search->success, search->error, search->data);
+      node_t *nodes[8];
+      size_t found = find_nodes(nodes, dht->bucket, search->key);
+      for(size_t i = 0; i < found; i++)
+        if(!filter_includes(search->filter, node->id))
+          send_get(dht, search, nodes[i]);
       break;
     }
     case 's': { // set
-      if(big_len <= DHT_HASH_SIZE + sizeof(request_t)) break;
       search_t *search = find_search(dht, request->token);
       uint8_t hash[DHT_HASH_SIZE] = {0};
       int ret = blake2(hash, big + sizeof(request_t), NULL, DHT_HASH_SIZE, big_len - sizeof(request_t), 0);
