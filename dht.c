@@ -645,9 +645,15 @@ dht_run(dht_t *dht, int timeout) {
      request->type == 'h' ||
      request->type == 'i' ||
      request->type == 't') {
-
     // we don't recognize this search, bail
     if(search_idx(dht, request->token) == -1) goto cleanup;
+  }
+
+  if(request->type == 'h' ||
+     request->type == 'i' ||
+     request->type == 's') {
+    // request too small
+    if(big_len <= sizeof(request_t) + DHT_HASH_SIZE) goto cleanup;
   }
 
   node = find_node(dht, request->id);
@@ -669,12 +675,8 @@ dht_run(dht_t *dht, int timeout) {
       compress_and_send(dht, node, (uint8_t *)&resp, sizeof(resp));
       break;
     }
-    case 'o': {
-      kill_search(dht, search_idx(dht, request->token));
-      break;
-    }
     case 'g': { // get
-      if(big_len != DHT_HASH_SIZE + sizeof(request_t)) break;
+      if(big_len <= DHT_HASH_SIZE + sizeof(request_t)) break;
       uint8_t key[DHT_HASH_SIZE] = {0};
       memcpy(key, big + sizeof(request_t), DHT_HASH_SIZE);
       uint8_t *buf = NULL;
@@ -687,7 +689,6 @@ dht_run(dht_t *dht, int timeout) {
       break;
     }
     case 'h':{ // get response found
-      if(big_len <= sizeof(request_t) + DHT_HASH_SIZE) break;
       search_t *search = find_search(dht, request->token);
       uint8_t key[DHT_HASH_SIZE];
       uint8_t *data = big + sizeof(request_t);
@@ -704,7 +705,7 @@ dht_run(dht_t *dht, int timeout) {
     case 'i': { // get response not found
       if(big_len <= sizeof(request_t)) break;
       uint8_t *data = big + sizeof(request_t);
-      for(int i = 0; i < (big_len - sizeof(request_t)) / sizeof(ip_t); i++) {
+      for(size_t i = 0; i < (big_len - sizeof(request_t)) / sizeof(ip_t); i++) {
         ip_t *ip = (ip_t *)data + sizeof(request_t) * i;
         insert_from_ip(dht, ip);
       }
@@ -714,9 +715,25 @@ dht_run(dht_t *dht, int timeout) {
       dht_get(dht, search->key, search->success, search->error, search->data);
       break;
     }
-    case 's': // set
+    case 's': { // set
+      if(big_len <= DHT_HASH_SIZE + sizeof(request_t)) break;
+      search_t *search = find_search(dht, request->token);
+      uint8_t hash[DHT_HASH_SIZE] = {0};
+      int ret = blake2(hash, big + sizeof(request_t), NULL, DHT_HASH_SIZE, big_len - sizeof(request_t), 0);
+      if(ret != -1 && crypto_verify_32(hash, search->key) == 0) {
+        request_t resp = {0};
+        resp.type = 't';
+        memcpy(resp.id, dht->id, DHT_HASH_SIZE);
+        resp.token = request->token;
+        compress_and_send(dht, node, (uint8_t *)&resp, sizeof(resp));
+      }
       break;
+    }
+    case 'o': 
     case 't': // set response
+      kill_search(dht, search_idx(dht, request->token));
+      break;
+    default:
       break;
   }
 
