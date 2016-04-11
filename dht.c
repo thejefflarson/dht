@@ -39,7 +39,7 @@ typedef struct bucket_t {
   struct bucket_t *next;
 } bucket_t;
 
-#define FILTER_SIZE 64
+#define FILTER_SIZE 128
 typedef struct {
   uint64_t token;
   uint8_t key[DHT_HASH_SIZE];
@@ -118,23 +118,23 @@ randombytes(uint8_t *x, uint32_t xlen) {
 
 #pragma mark filter
 
-#define hasher(key, i) ((uint32_t) *(key + sizeof(uint32_t) * i)) % (CHAR_BIT * FILTER_SIZE)
+#define hasher(key, i) (*(uint64_t *) (&key[sizeof(uint64_t) * i])) % (CHAR_BIT * FILTER_SIZE)
 void
 filter_add(uint8_t filter[FILTER_SIZE], uint8_t key[DHT_HASH_SIZE]) {
   for(int i = 0; i < 4; i++) {
-    uint16_t hash = hasher(key, i);
-    filter[hash / CHAR_BIT] |= (1 << hash % CHAR_BIT); 
+    uint64_t hash = hasher(key, i);
+    filter[hash / 8] |= (1 << hash % 8); 
   }
 }
 
 bool
 filter_includes(uint8_t filter[FILTER_SIZE], uint8_t key[DHT_HASH_SIZE]) {
-  bool ret = true;
   for(int i = 0; i < 4; i++) {
-    uint16_t hash = hasher(key, i);
-    ret = ret && (0 != (filter[hash / CHAR_BIT] & (1 << hash % CHAR_BIT)));
+    uint64_t hash = hasher(key, i);
+    if((filter[hash / 8] & (1 << (hash % 8))) == 0)
+      return false;
   }
-  return ret;
+  return true;
 }
 
 
