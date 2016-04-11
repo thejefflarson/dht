@@ -57,8 +57,8 @@ struct dht_s {
   search_t searches[MAX_SEARCH];
   uint16_t search_idx[MAX_SEARCH];
   uint16_t search_len;
-  ssize_t (*lookup)(const uint8_t key[DHT_HASH_SIZE], void **data);
-  int (*store)(const uint8_t key[DHT_HASH_SIZE], void *data, size_t length);
+  dht_store_callback store;
+  dht_lookup_callback lookup;
   struct bucket_t *bucket;
 };
 
@@ -618,7 +618,7 @@ create_get_response(dht_t* dht,
   resp.token = token;
   if(dht->lookup) {
     void *value = NULL;
-    ssize_t ret = dht->lookup(key, &value);
+    size_t ret = dht->lookup(key, &value);
     if(ret > 0) {
       *buf = calloc(1, sizeof(resp) + ret);
       if(!*buf) return -1;
