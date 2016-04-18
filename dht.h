@@ -2,6 +2,8 @@
 #define _DHT_H_
 #include <stddef.h>
 #include <stdint.h>
+#include <sys/socket.h>
+#include <unistd.h>
 
 #define DHT_HASH_SIZE 32
 
@@ -31,15 +33,15 @@ dht_run(dht_t *dht, int timeout);
 void
 dht_close(dht_t *dht);
 
-// int
-// dht_insert(dht_t *dht, uint8_t key[DHT_HASH_SIZE], struct sockaddr_storage *addr);
+int
+dht_add_node(dht_t *dht, uint8_t key[DHT_HASH_SIZE], struct sockaddr_storage *addr);
 
 typedef int
 (*dht_store_callback)(uint8_t key[DHT_HASH_SIZE], void *data, size_t length);
 
-typedef size_t
+typedef ssize_t
 (*dht_lookup_callback)(uint8_t key[DHT_HASH_SIZE], void **data);
 
-// int
-// dht_set_storage(dht_store_callback store, dht_lookup_callback lookup);
+void
+dht_set_storage(dht_t *dht, dht_store_callback store, dht_lookup_callback lookup);
 #endif

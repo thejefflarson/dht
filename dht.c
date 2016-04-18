@@ -123,7 +123,7 @@ void
 filter_add(uint8_t filter[FILTER_SIZE], uint8_t key[DHT_HASH_SIZE]) {
   for(int i = 0; i < 4; i++) {
     uint64_t hash = hasher(key, i);
-    filter[hash / 8] |= (1 << hash % 8); 
+    filter[hash / 8] |= (1 << hash % 8);
   }
 }
 
@@ -333,7 +333,7 @@ static int
 bucket_update_walker(void *ctx, bucket_t *root){
   (void) ctx;
   for(int i = 0; i < root->length; i++){
-    if(!node_good(root->nodes[i])){
+    if(!bucket_has_space(root) && !node_good(root->nodes[i])){
       node_free(root->nodes[i]);
       memmove(root->nodes + i, root->nodes + i + 1, sizeof(node_t *) * (root->length - i - 1));
       i--;
@@ -465,6 +465,12 @@ dht_close(dht_t *dht) {
   free(dht);
 }
 
+void
+dht_set_storage(dht_t *dht, dht_store_callback store, dht_lookup_callback lookup) {
+  dht->store = store;
+  dht->lookup = lookup;
+}
+
 search_t *
 get_search(dht_t *dht, const uint8_t key[DHT_HASH_SIZE],
            dht_get_callback success, dht_failure_callback error, void *closure) {
@@ -507,6 +513,18 @@ send_get(dht_t* dht, search_t* to_search, node_t* node) {
   memcpy(buf + sizeof(get), to_search->key, DHT_HASH_SIZE);
   filter_add(to_search->filter, node->id);
   return compress_and_send(dht, node, (uint8_t *)&buf, sizeof(buf));
+}
+
+int
+dht_add_node(dht_t* dht, uint8_t key[], struct sockaddr_storage* addr) {
+  node_t *node = node_new(key, addr);
+  if(!node) return -1;
+  bucket_t *ret = bucket_insert(dht->bucket, node);
+  if(!ret) {
+    node_free(node);
+    return -1;
+  }
+  return 0;
 }
 
 int
@@ -755,6 +773,9 @@ dht_run(dht_t *dht, int timeout) {
       uint8_t hash[DHT_HASH_SIZE] = {0};
       int ret = blake2(hash, big + sizeof(request_t), NULL, DHT_HASH_SIZE, big_len - sizeof(request_t), 0);
       if(ret != -1 && crypto_verify_32(hash, search->key) == 0) {
+        if(dht->store) {
+          dht->store(hash, big + sizeof(request_t), big_len - sizeof(request_t));
+        }
         request_t resp = {0};
         resp.type = 't';
         memcpy(resp.id, dht->id, DHT_HASH_SIZE);
@@ -763,7 +784,7 @@ dht_run(dht_t *dht, int timeout) {
       }
       break;
     }
-    case 'o': 
+    case 'o':
     case 't': // set response
       kill_search(dht, search_idx(dht, request->token));
       break;
@@ -778,4 +799,3 @@ cleanup:
   free(big);
   return -1;
 }
-
