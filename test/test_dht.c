@@ -1,5 +1,6 @@
 #include "../dht.c"
 #include "tap.h"
+#include <arpa/inet.h>
 
 static void
 test_init(){
@@ -9,6 +10,7 @@ test_init(){
 }
 
 static int ran = 0;
+static int err = 0;
 
 static void
 lookup() {
@@ -26,7 +28,7 @@ static void
 error(void *closure) {
   (void)closure;
   ok(false, "error finding something");
-  ran++;
+  err++;
 }
 
 static void
@@ -34,19 +36,21 @@ test_set_get() {
   dht_t *dht  = dht_new(9999);
   dht_t *dht2 = dht_new(10000);
   ok(dht != NULL, "dht allocated correctly");
-  ok(dht2 != NULL, "multiple dht's per process");
+  ok(dht2 != NULL, "multiple dhts per process");
   char data[] = "hello";
   uint8_t key[DHT_HASH_SIZE] = {0};
   int ret = blake2(key, data, NULL, DHT_HASH_SIZE, sizeof(data), 0);
   ok(ret == 0, "hashed 'hello' correctly");
-  struct sockaddr_storage addr;
-  dht_insert(dht, dht2->id, addr);
+  struct sockaddr_in addr = {0};
+  inet_pton(AF_INET, "127.0.0.1", &(addr.sin_addr));
+  dht_add_node(dht, dht2->id, (struct sockaddr_storage *) &addr);
   dht_set(dht, data, sizeof(data), success, error, NULL);
   dht_run(dht2, 10);
   dht_get(dht, key, success, error, NULL);
   dht_close(dht);
   dht_close(dht2);
-  assert(ran == 2, "got a value");
+  ok(ran == 2, "got a value");
+  ok(err == 0, "couldn't find a value");
 }
 
 int
