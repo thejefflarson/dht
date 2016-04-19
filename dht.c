@@ -675,8 +675,9 @@ dht_run(dht_t *dht, int timeout) {
   struct pollfd fd = {0};
   fd.fd = dht->socket;
   fd.events = POLLIN;
-  poll(&fd, 1, timeout);
-
+  int ev = poll(&fd, 1, timeout);
+  
+  if(ev <= 0) return -1;
   if(!(fd.revents & POLLIN)) return 0;
 
   uint8_t buf[MAX_SIZE] = {0};

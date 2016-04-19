@@ -58,9 +58,11 @@ test_set_get() {
   dht_add_node(dht, dht2->id, (struct sockaddr_storage *) &addr);
   dht_set_storage(dht2, store, lookup);
   dht_set(dht, data, sizeof(data), success, error, NULL);
-  dht_run(dht2, 1);
+  ret = dht_run(dht2, 100);
+  ok(ret == 0, "ran successfully");
   dht_get(dht, key, success, error, NULL);
-  dht_run(dht2, 1);
+  ret = dht_run(dht2, 100);
+  ok(ret == 0, "ran successfully");
   dht_close(dht);
   dht_close(dht2);
   ok(ran == 2, "got a value");
