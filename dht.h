@@ -37,10 +37,10 @@ int
 dht_add_node(dht_t *dht, uint8_t key[DHT_HASH_SIZE], struct sockaddr_storage *addr);
 
 typedef int
-(*dht_store_callback)(uint8_t key[DHT_HASH_SIZE], void *data, size_t length);
+(*dht_store_callback)(const uint8_t key[DHT_HASH_SIZE], const void *data, const size_t length);
 
 typedef ssize_t
-(*dht_lookup_callback)(uint8_t key[DHT_HASH_SIZE], void **data);
+(*dht_lookup_callback)(const uint8_t key[DHT_HASH_SIZE], void **data);
 
 void
 dht_set_storage(dht_t *dht, dht_store_callback store, dht_lookup_callback lookup);

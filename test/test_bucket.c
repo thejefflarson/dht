@@ -59,7 +59,8 @@ test_bucket_update(){
   node->last_heard = 0;
   bucket_update(bucket);
   bucket_walk(&j, bucket, _walker);
-  ok(j == 0, "old nodes should be removed");
+  ok(j == 1, "old nodes should not be removed if bucket is not full");
+  // TODO: test full bucket removal
   bucket_free(bucket);
 }
 
