@@ -208,7 +208,7 @@ node_free(node_t *node){
 
 static bool
 node_good(node_t *node){
-  return time(NULL) - node->last_heard < 1500;
+  return time(NULL) - node->last_heard < 60 * 60;
 }
 
 static int
