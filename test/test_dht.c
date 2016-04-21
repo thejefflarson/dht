@@ -71,7 +71,7 @@ test_set_get() {
   ret = dht_run(dht2, 100);
   ok(ret == 0, "dht2 received a set request");
   ret = dht_run(dht, 100);
-  ok(ret == 0, "dth received set response");  
+  ok(ret == 0, "dht received set response");  
   dht_get(dht, key, success, error, NULL);
   ret = dht_run(dht2, 100);
   ok(ret == 0, "dht2 received a get request");

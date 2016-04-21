@@ -535,7 +535,6 @@ dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE],
   if(!node) return -1;
   search_t *to_search = get_search(dht, key, success, error, closure);
   if(!to_search) return -1;
-
   return send_get(dht, to_search, node);
 }
 
@@ -627,7 +626,7 @@ insert_from_ip(dht_t *dht, const ip_t *ip) {
 
 #define MAX_SIZE 1500
 
-int
+ssize_t
 create_get_response(dht_t* dht,
            const uint64_t token,
            const uint8_t key[DHT_HASH_SIZE],
@@ -643,7 +642,7 @@ create_get_response(dht_t* dht,
       if(!*buf) return -1;
       memcpy(*buf, (void *)&resp, sizeof(resp));
       memcpy(*buf + sizeof(resp), value, ret);
-      return 0;
+      return sizeof(resp) + ret;
     }
   }
   resp.type = 'i';
@@ -658,7 +657,7 @@ create_get_response(dht_t* dht,
     fill_ip(&ip, nodes[i]);
     memcpy(*buf + sizeof(resp) + sizeof(ip_t) * i, &ip, sizeof(ip));
   }
-  return 0;
+  return sizeof(resp) + sizeof(ip_t) * found;
 }
 
 int
@@ -695,7 +694,6 @@ dht_run(dht_t *dht, int timeout) {
     goto cleanup;
 
   request_t *request = (request_t *)big;
-
   if(request->type == 'o' ||
      request->type == 'h' ||
      request->type == 'i' ||
@@ -724,8 +722,6 @@ dht_run(dht_t *dht, int timeout) {
 
   node_update(node);
 
-  printf("%c\n", request->type);
-  
   switch(request->type) {
     case 'p': { // ping
       request_t resp = { .type = 'o' };
@@ -738,8 +734,9 @@ dht_run(dht_t *dht, int timeout) {
       uint8_t key[DHT_HASH_SIZE] = {0};
       memcpy(key, big + sizeof(request_t), DHT_HASH_SIZE);
       uint8_t *buf = NULL;
-      if(create_get_response(dht, request->token, key, &buf) == 0) {
-        compress_and_send(dht, node, buf, sizeof(buf));
+      ssize_t ret = create_get_response(dht, request->token, key, &buf);
+      if(ret != -1) {
+        compress_and_send(dht, node, buf, ret);
         free(buf);
       } else {
         goto cleanup;
