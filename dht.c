@@ -693,6 +693,9 @@ dht_run(dht_t *dht, int timeout) {
   if(ret != Z_OK)
     goto cleanup;
 
+  if(ret < sizeof(request_t))
+    goto cleanup;
+  
   request_t *request = (request_t *)big;
   if(request->type == 'o' ||
      request->type == 'h' ||

@@ -9,6 +9,7 @@ main(void) {
   memcpy(buf, &req, sizeof(req));
   int fd = open("./fuzz-cases/1.fuzz", O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
   write(fd, buf, sizeof(buf));
+  fsync(fd);
   close(fd);
   req.type = 's';
   char data[] = "hello";
@@ -20,6 +21,7 @@ main(void) {
   memcpy(sbuf + sizeof(req) + DHT_HASH_SIZE, data, sizeof(data));
   fd = open("./fuzz-cases/2.fuzz", O_WRONLY | O_CREAT, S_IRUSR | S_IWUSR);
   write(fd, sbuf, sizeof(sbuf));
+  fsync(fd);
   close(fd);
   return 0;
 }
