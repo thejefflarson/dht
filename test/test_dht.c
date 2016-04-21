@@ -57,8 +57,6 @@ test_set_get() {
   struct sockaddr_storage addr = {0};
   socklen_t slen = sizeof(addr);
   ret = getsockname(dht2->socket,(struct sockaddr *)&addr, &slen);
-  char str[INET_ADDRSTRLEN];
-  inet_ntop(AF_INET, &(((struct sockaddr_in *)&addr)->sin_addr), str, INET_ADDRSTRLEN);  
   ok(ret == 0, "parsed address correctly");
   dht_add_node(dht, dht2->id, &addr);
   dht_set_storage(dht2, store, lookup);
