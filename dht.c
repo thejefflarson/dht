@@ -92,20 +92,20 @@ static int fd = -1;
 void
 randombytes(uint8_t *x, uint32_t xlen) {
   int i;
-
-  if (fd == -1) {
-    for (;;) {
-      fd = open("/dev/urandom",O_RDONLY);
+  if(fd == -1) {
+    for(;;) {
+      fd = open("/dev/urandom", O_RDONLY);
       if (fd != -1) break;
+      
       sleep(1);
     }
   }
 
-  while (xlen > 0) {
-    if (xlen < 1048576) i = xlen; else i = 1048576;
+  while(xlen > 0) {
+    if(xlen < 1048576) i = xlen; else i = 1048576;
 
     i = read(fd,x,i);
-    if (i < 1) {
+    if(i < 1) {
       sleep(1);
       continue;
     }
@@ -194,7 +194,7 @@ node_new(const uint8_t id[DHT_HASH_SIZE], const struct sockaddr_storage *address
   if(node == NULL)
     return NULL;
 
-  memcpy((void *) &node->address, (const void *) address, sizeof(struct sockaddr_storage));
+  memcpy(&node->address, address, sizeof(struct sockaddr_storage));
   memcpy(node->id, id, DHT_HASH_SIZE);
   time(&node->created_at);
   node_update(node);
@@ -429,10 +429,11 @@ dht_new(int port) {
   hints.ai_family = AF_UNSPEC;
   hints.ai_socktype = SOCK_DGRAM;
   hints.ai_flags = AI_PASSIVE;
+  hints.ai_protocol = IPPROTO_UDP;
   char cport[6] = {0};
   snprintf(cport, 6, "%i", port);
   int error = getaddrinfo(NULL, cport, &hints, &res);
-  if(error) {
+  if(error != 0) {
     errno = error;
     goto cleanup;
   }
@@ -442,7 +443,7 @@ dht_new(int port) {
     goto cleanup;
   }
 
-  if(bind(dht->socket, res->ai_addr, res->ai_addrlen) == -1) {
+  if(bind(dht->socket, res->ai_addr, res->ai_addrlen) != 0) {
     goto cleanup;
   }
   freeaddrinfo(res);
@@ -476,7 +477,7 @@ get_search(dht_t *dht, const uint8_t key[DHT_HASH_SIZE],
            dht_get_callback success, dht_failure_callback error, void *closure) {
   if(dht->search_len + 1 >= MAX_SEARCH) return NULL;
   search_t *to_search = &dht->searches[dht->search_idx[dht->search_len]];
-  randombytes((uint8_t*)to_search->token, sizeof(to_search->token));
+  randombytes((uint8_t*) &to_search->token, sizeof(to_search->token));
   if(key) memcpy(to_search->key, key, DHT_HASH_SIZE);
   to_search->success = success;
   to_search->error = error;
@@ -486,25 +487,25 @@ get_search(dht_t *dht, const uint8_t key[DHT_HASH_SIZE],
   return to_search;
 }
 
-int
+ssize_t
 compress_and_send(const dht_t *dht, const node_t *node,
                   const uint8_t *buf, const size_t len) {
-  uint8_t *comp = (uint8_t *) calloc(1, len);
+  size_t length = compressBound(len);
+  uint8_t *comp = (uint8_t *) calloc(1, length);
   if(!comp) return -1;
-  size_t length;
-  size_t ret = compress(comp, &length, buf, len);
+  ssize_t ret = compress(comp, &length, buf, len);
   if(ret != Z_OK) {
     free(comp);
     return -1;
   }
 
-  ret = sendto(dht->socket, comp, length, 0, (struct sockaddr *)&node->address, sizeof(node->address));
+  ret = sendto(dht->socket, comp, length, 0, (struct sockaddr *) &node->address, node->address.ss_len);
   free(comp);
   return ret;
 };
 
 static int
-send_get(dht_t* dht, search_t* to_search, node_t* node) {
+send_get(dht_t *dht, search_t *to_search, node_t *node) {
   request_t get = { .type = 'g' };
   get.token = to_search->token;
   memcpy(get.id, dht->id, DHT_HASH_SIZE);
@@ -516,7 +517,7 @@ send_get(dht_t* dht, search_t* to_search, node_t* node) {
 }
 
 int
-dht_add_node(dht_t* dht, uint8_t key[], struct sockaddr_storage* addr) {
+dht_add_node(dht_t *dht, uint8_t key[], struct sockaddr_storage *addr) {
   node_t *node = node_new(key, addr);
   if(!node) return -1;
   bucket_t *ret = bucket_insert(dht->bucket, node);
@@ -558,7 +559,7 @@ dht_set(dht_t *dht, void *data, size_t len, dht_get_callback success,
   memcpy(buf, &set, sizeof(set));
   memcpy(buf + sizeof(set), key, DHT_HASH_SIZE);
   memcpy(buf + sizeof(set) + DHT_HASH_SIZE, data, len);
-  ret = compress_and_send(dht, node, buf, sizeof(set) + len);
+  ret = compress_and_send(dht, node, buf, sizeof(set) + len + DHT_HASH_SIZE);
   free(buf);
   return ret;
 }
@@ -688,7 +689,7 @@ dht_run(dht_t *dht, int timeout) {
 
   uint8_t *big = calloc(1, ret);
   if(big == NULL) return -1;
-  size_t big_len;
+  size_t big_len = MAX_SIZE;
   ret = uncompress(big, &big_len, buf, ret);
   if(ret != Z_OK)
     goto cleanup;
@@ -719,7 +720,7 @@ dht_run(dht_t *dht, int timeout) {
     bucket_insert(dht->bucket, node);
   }
 
-  if(!memcmp(&node->address, &addr, sizeof(addr))) return -1; // TOFU
+  if(memcmp(&node->address, &addr, sizeof(addr)) != 0) return -1; // TOFU
 
   node_update(node);
 
@@ -769,13 +770,13 @@ dht_run(dht_t *dht, int timeout) {
           send_get(dht, search, nodes[i]);
       break;
     }
-    case 's': { // set
-      search_t *search = find_search(dht, request->token);
+    case 's': { // 
       uint8_t hash[DHT_HASH_SIZE] = {0};
-      int ret = blake2(hash, big + sizeof(request_t), NULL, DHT_HASH_SIZE, big_len - sizeof(request_t), 0);
-      if(ret != -1 && crypto_verify_32(hash, search->key) == 0) {
+      uint8_t *data =  big + sizeof(request_t) + DHT_HASH_SIZE;
+      int ret = blake2(hash, data, NULL, DHT_HASH_SIZE, big_len - sizeof(request_t) - DHT_HASH_SIZE, 0);
+      if(ret != -1 && crypto_verify_32(hash, big + sizeof(request_t)) == 0) {
         if(dht->store) {
-          dht->store(hash, big + sizeof(request_t), big_len - sizeof(request_t));
+          dht->store(hash, data, big_len - sizeof(request_t) - DHT_HASH_SIZE);
         }
         request_t resp = {0};
         resp.type = 't';

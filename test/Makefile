@@ -1,7 +1,8 @@
 SOURCES = $(shell ls test_*.c)
 TESTS = $(basename $(SOURCES))
 DEPS = ../vendor/blake2b-ref.o ../vendor/tweetnacl.o
-CFLAGS = -Wall -g -fprofile-arcs -ftest-coverage -fsanitize=address -fno-omit-frame-pointer
+CFLAGS = -Wall -g
+#-fprofile-arcs -ftest-coverage -fsanitize=address -fno-omit-frame-pointer
 CC ?= clang
 
 test: coverage/index.html
@@ -13,6 +14,7 @@ $(TESTS): %: %.c ../dht.c ../dht.h $(DEPS) tap.h Makefile
 	$(CC) $< $(DEPS) $(CFLAGS) -lz -o $@
 
 %.gcno: %
+	rm -f $<.{gcda,gcno} 
 	./$<
 
 coverage.info: $(addsuffix .gcno, $(TESTS)) $(TESTS)

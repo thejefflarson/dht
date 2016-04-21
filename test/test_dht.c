@@ -53,15 +53,27 @@ test_set_get() {
   ok(dht2 != NULL, "multiple dhts per process");
   int ret = blake2(key, data, NULL, DHT_HASH_SIZE, sizeof(data), 0);
   ok(ret == 0, "hashed 'hello' correctly");
+
   struct sockaddr_storage addr = {0};
-  inet_pton(AF_INET, "127.0.0.1", &(((struct sockaddr_in *)&addr)->sin_addr));
-  dht_add_node(dht, dht2->id, (struct sockaddr_storage *) &addr);
+  socklen_t slen = sizeof(addr);
+  ret = getsockname(dht2->socket,(struct sockaddr *)&addr, &slen);
+  char str[INET_ADDRSTRLEN];
+  inet_ntop(AF_INET, &(((struct sockaddr_in *)&addr)->sin_addr), str, INET_ADDRSTRLEN);  
+  ok(ret == 0, "parsed address correctly");
+  dht_add_node(dht, dht2->id, &addr);
   dht_set_storage(dht2, store, lookup);
-  dht_set(dht, data, sizeof(data), success, error, NULL);
+  ret = dht_set(dht, data, sizeof(data), success, error, NULL);
+  if(ret == -1) {
+    printf("%s\n", strerror(errno));
+    fflush(stdout);
+  }
+  ok(ret >= 0, "sent a set request");
   ret = dht_run(dht2, 100);
   ok(ret == 0, "ran successfully");
   dht_get(dht, key, success, error, NULL);
   ret = dht_run(dht2, 100);
+  ok(ret == 0, "ran successfully");
+  ret = dht_run(dht, 100);
   ok(ret == 0, "ran successfully");
   dht_close(dht);
   dht_close(dht2);
