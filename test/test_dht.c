@@ -17,7 +17,7 @@ static uint8_t data[] = "hello";
 
 static ssize_t
 lookup(const uint8_t skey[DHT_HASH_SIZE], void **sdata) {
-  ok(crypto_verify_32(skey, key), "key matches");
+  ok(crypto_verify_32(skey, key) == 0, "key matches");
   *sdata = data;
   lkp++;
   return 0;
@@ -25,9 +25,9 @@ lookup(const uint8_t skey[DHT_HASH_SIZE], void **sdata) {
 
 static int
 store(const uint8_t skey[DHT_HASH_SIZE], const void *sdata, const size_t length){
-  ok(crypto_verify_32(skey, key) == 0, "key matches in store");
   ok(length == sizeof(data), "length matches in store");
   ok(memcmp(sdata, data, length) == 0, "length matches in store");
+  ok(crypto_verify_32(skey, key) == 0, "key matches in store");
   return sizeof(data);
 }
 
