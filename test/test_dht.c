@@ -20,7 +20,7 @@ lookup(const uint8_t skey[DHT_HASH_SIZE], void **sdata) {
   ok(crypto_verify_32(skey, key) == 0, "key matches");
   *sdata = data;
   lkp++;
-  return 0;
+  return sizeof(data);
 }
 
 static int
@@ -69,15 +69,18 @@ test_set_get() {
   }
   ok(ret >= 0, "sent a set request");
   ret = dht_run(dht2, 100);
-  ok(ret == 0, "ran successfully");
+  ok(ret == 0, "dht2 received a set request");
+  ret = dht_run(dht, 100);
+  ok(ret == 0, "dth received set response");  
   dht_get(dht, key, success, error, NULL);
   ret = dht_run(dht2, 100);
-  ok(ret == 0, "ran successfully");
+  ok(ret == 0, "dht2 received a get request");
   ret = dht_run(dht, 100);
-  ok(ret == 0, "ran successfully");
+  ok(ret == 0, "dht received get response");  
+
   dht_close(dht);
   dht_close(dht2);
-  ok(ran == 2, "got a value");
+  ok(ran == 1, "got a value");
   ok(lkp == 1, "stored the value");
   ok(err == 0, "couldn't find a value");
 }

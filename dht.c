@@ -566,7 +566,7 @@ dht_set(dht_t *dht, void *data, size_t len, dht_get_callback success,
 
 static ssize_t
 search_idx(dht_t *dht, uint64_t token) {
-  for(int i = 0; dht->search_len; i++) {
+  for(int i = 0; i < dht->search_len; i++) {
     if(dht->searches[dht->search_idx[i]].token == token){
       return i;
     }
@@ -637,7 +637,7 @@ create_get_response(dht_t* dht,
   resp.token = token;
   if(dht->lookup) {
     void *value = NULL;
-    size_t ret = dht->lookup(key, &value);
+    ssize_t ret = dht->lookup(key, &value);
     if(ret > 0) {
       *buf = calloc(1, sizeof(resp) + ret);
       if(!*buf) return -1;
@@ -666,7 +666,7 @@ dht_run(dht_t *dht, int timeout) {
   // clear old searches
   for(int i = 0; i < dht->search_len; i++) {
     search_t search = dht->searches[dht->search_idx[i]];
-    if(time(NULL) - search.sent > 60) {
+    if((time(NULL) - search.sent) > 60 * 60) {
       kill_search(dht, i);
       search.error(search.data);
     }
@@ -683,7 +683,7 @@ dht_run(dht_t *dht, int timeout) {
 
   uint8_t buf[MAX_SIZE] = {0};
   struct sockaddr_storage addr = {0};
-  socklen_t len;
+  socklen_t len = sizeof(addr);
   ssize_t ret = recvfrom(dht->socket, buf, MAX_SIZE, 0, (struct sockaddr *)&addr, &len);
   if(ret == -1) return ret;
 
@@ -720,10 +720,12 @@ dht_run(dht_t *dht, int timeout) {
     bucket_insert(dht->bucket, node);
   }
 
-  if(memcmp(&node->address, &addr, sizeof(addr)) != 0) return -1; // TOFU
+  //if(memcmp(&node->address, &addr, sizeof(addr)) != 0) return -1; // TOFU
 
   node_update(node);
 
+  printf("%c\n", request->type);
+  
   switch(request->type) {
     case 'p': { // ping
       request_t resp = { .type = 'o' };
