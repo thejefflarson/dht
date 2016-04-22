@@ -15,3 +15,8 @@ GTAGS
 TAGS
 GPATH
 GRTAGS
+/test/create_fuzz_cases
+/test/fuzz-cases/*.fuzz
+/test/create_fuzz_cases.c~
+/test/fuzz
+/test/fuzz-crashes

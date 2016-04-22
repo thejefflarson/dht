@@ -13,5 +13,6 @@ main(void) {
   compress_and_send(dht, node, buf, len);
   dht_run(dht, 1);
   dht_close(dht);
+  node_free(node);
   return 0;
 }

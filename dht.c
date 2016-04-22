@@ -446,6 +446,7 @@ dht_new(int port) {
   if(bind(dht->socket, res->ai_addr, res->ai_addrlen) != 0) {
     goto cleanup;
   }
+  
   freeaddrinfo(res);
   for(int i = 0; i < MAX_SEARCH; i++)
     dht->search_idx[i] = i;
@@ -686,14 +687,13 @@ dht_run(dht_t *dht, int timeout) {
   ssize_t ret = recvfrom(dht->socket, buf, MAX_SIZE, 0, (struct sockaddr *)&addr, &len);
   if(ret == -1) return ret;
 
-  uint8_t *big = calloc(1, ret);
-  if(big == NULL) return -1;
+  uint8_t big[MAX_SIZE] = {0};
   size_t big_len = MAX_SIZE;
   ret = uncompress(big, &big_len, buf, ret);
   if(ret != Z_OK)
     goto cleanup;
 
-  if(ret < sizeof(request_t))
+  if(big_len < sizeof(request_t))
     goto cleanup;
 
   request_t *request = (request_t *)big;
@@ -797,9 +797,7 @@ dht_run(dht_t *dht, int timeout) {
   }
 
   bucket_update(dht->bucket);
-  free(big);
   return 0;
 cleanup:
-  free(big);
   return -1;
 }
