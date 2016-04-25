@@ -27,7 +27,6 @@
 
 typedef struct {
   uint8_t id[DHT_HASH_SIZE];
-  time_t created_at;
   time_t last_heard;
   struct sockaddr_storage address;
 } node_t;
@@ -196,7 +195,6 @@ node_new(const uint8_t id[DHT_HASH_SIZE], const struct sockaddr_storage *address
 
   memcpy(&node->address, address, sizeof(struct sockaddr_storage));
   memcpy(node->id, id, DHT_HASH_SIZE);
-  time(&node->created_at);
   node_update(node);
   return node;
 }
@@ -208,7 +206,7 @@ node_free(node_t *node){
 
 static bool
 node_good(node_t *node){
-  return time(NULL) - node->last_heard < 60 * 60;
+  return time(NULL) - node->last_heard < 60 * 15;
 }
 
 static int
@@ -294,9 +292,6 @@ bucket_split(bucket_t *root){
   return false;
 }
 
-static void
-bucket_update(bucket_t *root);
-
 static bucket_t*
 bucket_insert(bucket_t *root, node_t *node) {
   while(root != NULL && !bucket_contains(root, node))
@@ -314,7 +309,6 @@ bucket_insert(bucket_t *root, node_t *node) {
   // have to check again to see if some nodes moved over
   if(bucket_has_space(root)) {
     root->nodes[root->length++] = node;
-    bucket_update(root);
   } else {
     return NULL;
   }
@@ -327,26 +321,6 @@ bucket_walk(void *ctx, bucket_t *root, const bucket_walk_callback cb) {
   while(cb(ctx, root) == 0 && root->next != NULL) {
     root = root->next;
   }
-}
-
-static int
-bucket_update_walker(void *ctx, bucket_t *root){
-  (void) ctx;
-  for(int i = 0; i < root->length; i++){
-    if(!bucket_has_space(root) && !node_good(root->nodes[i])){
-      node_free(root->nodes[i]);
-      memmove(root->nodes + i, root->nodes + i + 1, sizeof(node_t *) * (root->length - i - 1));
-      i--;
-      root->length--;
-    }
-  }
-  qsort(root->nodes, root->length, sizeof(node_t *), node_sort);
-  return 0;
-}
-
-static void
-bucket_update(bucket_t *root) {
-  bucket_walk(NULL, root, bucket_update_walker);
 }
 
 static void
@@ -473,7 +447,7 @@ dht_set_storage(dht_t *dht, dht_store_callback store, dht_lookup_callback lookup
   dht->lookup = lookup;
 }
 
-search_t *
+static search_t *
 get_search(dht_t *dht, const uint8_t key[DHT_HASH_SIZE],
            dht_get_callback success, dht_failure_callback error, void *closure) {
   if(dht->search_len + 1 >= MAX_SEARCH) return NULL;
@@ -488,7 +462,7 @@ get_search(dht_t *dht, const uint8_t key[DHT_HASH_SIZE],
   return to_search;
 }
 
-ssize_t
+static ssize_t
 compress_and_send(const dht_t *dht, const node_t *node,
                   const uint8_t *buf, const size_t len) {
   size_t length = compressBound(len);
@@ -661,12 +635,58 @@ create_get_response(dht_t* dht,
   return sizeof(resp) + sizeof(ip_t) * found;
 }
 
+typedef struct {
+  node_t *node;
+  bucket_t *bucket;
+} ping_t;
+
+static void
+remove_node(void *ctx){
+  ping_t *ping = ctx;
+  bucket_t *root = ping->bucket;
+  for(int i = 0; i < root->length; i++){
+    if(crypto_verify_32(ping->node->id, root->nodes[i]->id) == 0){
+      node_free(root->nodes[i]);
+      memmove(root->nodes + i, root->nodes + i + 1, sizeof(node_t *) * (root->length - i - 1));
+      i--;
+      root->length--;
+    }
+  }
+  qsort(root->nodes, root->length, sizeof(node_t *), node_sort);
+  free(ping);
+}
+
+
+static int
+bucket_ping_walker(void *ctx, bucket_t *root) {
+  dht_t *dht = ctx;
+  for(int i = 0; i < root->length; i++) {
+    node_t *node = root->nodes[i];
+    if(!node_good(node)) {
+      ping_t *ping = calloc(1, sizeof(ping_t));
+      if(ping == NULL) continue;
+      search_t *search = get_search(dht, node->id, NULL, remove_node, root);
+      if(search == NULL) {free(ping); continue; }
+      request_t req = { .type = 'p' };
+      memcpy(req.id, dht->id, DHT_HASH_SIZE);
+      req.token = search->token;
+      compress_and_send(dht, ping->node, (uint8_t *)&req, sizeof(req));
+    }
+  }
+  return 0;
+}
+
+static void
+bucket_ping(dht_t *dht) {
+  bucket_walk(dht, dht->bucket, bucket_ping_walker);
+}
+
 int
 dht_run(dht_t *dht, int timeout) {
   // clear old searches
   for(int i = 0; i < dht->search_len; i++) {
     search_t search = dht->searches[dht->search_idx[i]];
-    if((time(NULL) - search.sent) > 60 * 60) {
+    if((time(NULL) - search.sent) > 60) {
       kill_search(dht, i);
       search.error(search.data);
     }
@@ -796,7 +816,7 @@ dht_run(dht_t *dht, int timeout) {
       break;
   }
 
-  bucket_update(dht->bucket);
+  bucket_ping(dht);
   return 0;
 cleanup:
   return -1;
