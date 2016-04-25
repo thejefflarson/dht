@@ -601,7 +601,7 @@ insert_from_ip(dht_t *dht, const ip_t *ip) {
 
 #define MAX_SIZE 1500
 
-ssize_t
+static ssize_t
 create_get_response(dht_t* dht,
            const uint64_t token,
            const uint8_t key[DHT_HASH_SIZE],
