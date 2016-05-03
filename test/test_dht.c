@@ -69,12 +69,12 @@ test_set_get() {
   ret = dht_run(dht2, 100);
   ok(ret == 0, "dht2 received a set request");
   ret = dht_run(dht, 100);
-  ok(ret == 0, "dht received set response");  
+  ok(ret == 0, "dht received set response");
   dht_get(dht, key, success, error, NULL);
   ret = dht_run(dht2, 100);
   ok(ret == 0, "dht2 received a get request");
   ret = dht_run(dht, 100);
-  ok(ret == 0, "dht received get response");  
+  ok(ret == 0, "dht received get response");
 
   dht_close(dht);
   dht_close(dht2);
@@ -83,9 +83,25 @@ test_set_get() {
   ok(err == 0, "couldn't find a value");
 }
 
+static void
+test_full_network() {
+  dht_t *dhts[5];
+  for(size_t i = 0; i < sizeof(dhts) / sizeof(dhts[0]); i++) {
+    dhts[i] = dht_new(10000 + i);
+    ok(dhts[i], "couldn't allocate a dht");
+  }
+
+  // TODO: run the network
+
+  for(size_t i = 0; i < sizeof(dhts) / sizeof(dhts[0]); i++) {
+    dht_close(dhts[i]);
+  }
+}
+
 int
 main(){
   start_test;
   test_init();
   test_set_get();
+  test_full_network();
 }

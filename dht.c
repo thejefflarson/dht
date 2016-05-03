@@ -95,7 +95,7 @@ randombytes(uint8_t *x, uint32_t xlen) {
     for(;;) {
       fd = open("/dev/urandom", O_RDONLY);
       if (fd != -1) break;
-      
+
       sleep(1);
     }
   }
@@ -420,7 +420,7 @@ dht_new(int port) {
   if(bind(dht->socket, res->ai_addr, res->ai_addrlen) != 0) {
     goto cleanup;
   }
-  
+
   freeaddrinfo(res);
   for(int i = 0; i < MAX_SEARCH; i++)
     dht->search_idx[i] = i;
@@ -623,7 +623,6 @@ create_get_response(dht_t* dht,
   resp.type = 'i';
   node_t *nodes[8];
   size_t found = find_nodes(nodes, dht->bucket, key);
-  // count num bytes
   *buf = calloc(1, sizeof(resp) + found * sizeof(ip_t));
   if(!*buf) return -1;
   memcpy(*buf, &resp, sizeof(resp));
@@ -697,7 +696,7 @@ dht_run(dht_t *dht, int timeout) {
   fd.fd = dht->socket;
   fd.events = POLLIN;
   int ev = poll(&fd, 1, timeout);
-  
+
   if(ev <= 0) return -1;
   if(!(fd.revents & POLLIN)) return 0;
 
@@ -792,7 +791,7 @@ dht_run(dht_t *dht, int timeout) {
           send_get(dht, search, nodes[i]);
       break;
     }
-    case 's': { // 
+    case 's': { //
       uint8_t hash[DHT_HASH_SIZE] = {0};
       uint8_t *data =  big + sizeof(request_t) + DHT_HASH_SIZE;
       int ret = blake2(hash, data, NULL, DHT_HASH_SIZE, big_len - sizeof(request_t) - DHT_HASH_SIZE, 0);
