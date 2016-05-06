@@ -6,8 +6,6 @@ static void
 test_init(){
   dht_t *dht = dht_new(9999);
   ok(dht != NULL, "dht allocated correctly");
-  dht_t *dht2 = dht_new(9999);
-  ok(dht2 == NULL, "dht errors on open port");
   dht_close(dht);
 }
 
@@ -50,7 +48,7 @@ error(void *closure) {
 static void
 test_set_get() {
   dht_t *dht  = dht_new(9999);
-  dht_t *dht2 = dht_new(10001);
+  dht_t *dht2 = dht_new(10000);
   ok(dht != NULL, "dht allocated correctly");
   ok(dht2 != NULL, "multiple dhts per process");
   int ret = blake2(key, data, NULL, DHT_HASH_SIZE, sizeof(data), 0);
@@ -69,15 +67,24 @@ test_set_get() {
   }
   ok(ret >= 0, "sent a set request");
   ret = dht_run(dht2, 100);
+<<<<<<< e68638cca03e458bfe3ed540fde66e4bb633835c
   ok(ret == 0, "dht2 received a set request");
   ret = dht_run(dht, 100);
-  ok(ret == 0, "dht received set response");
+  ok(ret == 0, "dht received set response");  
   dht_get(dht, key, success, error, NULL);
   ret = dht_run(dht2, 100);
   ok(ret == 0, "dht2 received a get request");
   ret = dht_run(dht, 100);
-  ok(ret == 0, "dht received get response");
+  ok(ret == 0, "dht received get response");  
 
+=======
+  ok(ret == 0, "ran dht2 successfully");
+  dht_get(dht, key, success, error, NULL);
+  ret = dht_run(dht2, 100);
+  ok(ret == 0, "ran dht2 after get successfully");
+  ret = dht_run(dht, 100);
+  ok(ret == 0, "ran dht to receive the get successfully");
+>>>>>>> tweaks
   dht_close(dht);
   dht_close(dht2);
   ok(ran == 1, "got a value");
@@ -85,25 +92,9 @@ test_set_get() {
   ok(err == 0, "couldn't find a value");
 }
 
-static void
-test_full_network() {
-  dht_t *dhts[5];
-  for(size_t i = 0; i < sizeof(dhts) / sizeof(dhts[0]); i++) {
-    dhts[i] = dht_new(10000 + i);
-    ok(dhts[i], "couldn't allocate a dht");
-  }
-
-  // TODO: run the network
-
-  for(size_t i = 0; i < sizeof(dhts) / sizeof(dhts[0]); i++) {
-    dht_close(dhts[i]);
-  }
-}
-
 int
 main(){
   start_test;
   test_init();
   test_set_get();
-  test_full_network();
 }
