@@ -6,6 +6,8 @@ static void
 test_init(){
   dht_t *dht = dht_new(9999);
   ok(dht != NULL, "dht allocated correctly");
+  dht_t *dht2 = dht_new(9999);
+  ok(dht2 == NULL, "dht errors on open port");
   dht_close(dht);
 }
 
@@ -48,7 +50,7 @@ error(void *closure) {
 static void
 test_set_get() {
   dht_t *dht  = dht_new(9999);
-  dht_t *dht2 = dht_new(10000);
+  dht_t *dht2 = dht_new(10001);
   ok(dht != NULL, "dht allocated correctly");
   ok(dht2 != NULL, "multiple dhts per process");
   int ret = blake2(key, data, NULL, DHT_HASH_SIZE, sizeof(data), 0);
