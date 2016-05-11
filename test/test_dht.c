@@ -87,10 +87,28 @@ test_set_get() {
 
 static void
 test_full_network() {
-  dht_t *dhts[5];
-  for(size_t i = 0; i < sizeof(dhts) / sizeof(dhts[0]); i++) {
+  #define DHTS 5
+  #define PER 5
+  dht_t *dhts[DHTS];
+  for(size_t i = 0; i < DHTS; i++) {
     dhts[i] = dht_new(10000 + i);
     ok(dhts[i], "couldn't allocate a dht");
+  }
+
+  typedef struct {
+    uint8_t hash[DHT_HASH_SIZE];
+    uint8_t value;
+    bool have;
+  } state_t;
+  state_t states[DHTS][PER] = {0};
+
+  for(int i = 0; i < DHTS; i++) {
+    for(int j = 0; j < PER; j++) {
+      states[i][j].value = j;
+      int ret = blake2(states[i][j].hash, &j, NULL, DHT_HASH_SIZE, sizeof(j), 0);
+      if(i == j) states[DHTS][PER].have = true;
+      ok(ret != -1, "Couldn't hash the value");
+    }
   }
 
   // TODO: run the network
@@ -98,6 +116,8 @@ test_full_network() {
   for(size_t i = 0; i < sizeof(dhts) / sizeof(dhts[0]); i++) {
     dht_close(dhts[i]);
   }
+  #undef DHTS
+  #undef PER
 }
 
 int
