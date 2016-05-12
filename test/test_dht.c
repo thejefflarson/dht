@@ -85,22 +85,25 @@ test_set_get() {
   ok(err == 0, "couldn't find a value");
 }
 
+typedef struct {
+  uint8_t hash[DHT_HASH_SIZE];
+  uint8_t value;
+  bool have;
+} state_t;
+
+#define DHTS 5
+#define PER 5
+dht_t *dhts[DHTS];
+
+state_t states[DHTS][PER] = {0};
+
 static void
 test_full_network() {
-  #define DHTS 5
-  #define PER 5
-  dht_t *dhts[DHTS];
   for(size_t i = 0; i < DHTS; i++) {
     dhts[i] = dht_new(10000 + i);
+    dht_set_storage(dhts[i], set, find);
     ok(dhts[i], "couldn't allocate a dht");
   }
-
-  typedef struct {
-    uint8_t hash[DHT_HASH_SIZE];
-    uint8_t value;
-    bool have;
-  } state_t;
-  state_t states[DHTS][PER] = {0};
 
   for(int i = 0; i < DHTS; i++) {
     for(int j = 0; j < PER; j++) {
@@ -111,7 +114,18 @@ test_full_network() {
     }
   }
 
-  // TODO: run the network
+  while(1) {
+    bool complete = true;
+    for(int i = 0; i < DHTS; i++) {
+      for(int j = 0; j < PER; j++) {
+        complete = complete && states[i][j].have;
+        if(!states[i][j].have) {
+          dht_get(dhts[i], states[i][j].hash, got, failed, &states[i][j]);
+        }
+      }
+    }
+    if(complete) break;
+  }
 
   for(size_t i = 0; i < sizeof(dhts) / sizeof(dhts[0]); i++) {
     dht_close(dhts[i]);
