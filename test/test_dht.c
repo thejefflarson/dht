@@ -97,6 +97,28 @@ dht_t *dhts[DHTS];
 
 state_t states[DHTS][PER] = {0};
 
+void
+got(void *closure, uint8_t key[DHT_HASH_SIZE], uint8_t *data, size_t length) {
+
+}
+
+void
+failed(void *closure) {
+  state_t *state = closure;
+  printf("# failed on %i", state->value);
+  ok(false, "failed lookup");
+}
+
+int
+set(const uint8_t key[DHT_HASH_SIZE], const void *data, const size_t length) {
+
+}
+
+ssize_t
+find(const uint8_t key[DHT_HASH_SIZE], void **data) {
+
+}
+
 static void
 test_full_network() {
   for(size_t i = 0; i < DHTS; i++) {
