@@ -700,15 +700,24 @@ dht_run(dht_t *dht, int timeout) {
   if(ev <= 0) return -1;
   if(!(fd.revents & POLLIN)) return 0;
 
-  uint8_t buf[MAX_SIZE] = {0};
+  uint8_t *buf = calloc(MAX_SIZE, sizeof(uint8_t));
+  if(buf == NULL) return -1;
   struct sockaddr_storage addr = {0};
   socklen_t len = sizeof(addr);
   ssize_t ret = recvfrom(dht->socket, buf, MAX_SIZE, 0, (struct sockaddr *)&addr, &len);
-  if(ret == -1) return ret;
+  if(ret == -1) {
+    free(buf);
+    return ret;
+  }
 
-  uint8_t big[MAX_SIZE] = {0};
+  uint8_t *big = calloc(MAX_SIZE, sizeof(uint8_t));
+  if(big == NULL) {
+    free(buf);
+    return -1;
+  }
   size_t big_len = MAX_SIZE;
   ret = uncompress(big, &big_len, buf, ret);
+  free(buf);
   if(ret != Z_OK)
     goto cleanup;
 
@@ -779,8 +788,9 @@ dht_run(dht_t *dht, int timeout) {
     }
     case 'i': { // get response not found
       uint8_t *data = big + sizeof(request_t);
+
       for(size_t i = 0; i < (big_len - sizeof(request_t)) / sizeof(ip_t); i++) {
-        ip_t *ip = (ip_t *)data + sizeof(request_t) * i;
+        ip_t *ip = (ip_t *)(data + sizeof(ip_t) * i);
         insert_from_ip(dht, ip);
       }
       search_t *search = find_search(dht, request->token);
@@ -814,9 +824,10 @@ dht_run(dht_t *dht, int timeout) {
     default:
       break;
   }
-
+  free(big);
   bucket_ping(dht);
   return 0;
 cleanup:
+  free(big);
   return -1;
 }
