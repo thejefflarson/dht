@@ -92,8 +92,8 @@ typedef struct {
   bool have;
 } state_t;
 
-#define DHTS 25
-#define PER 25
+#define DHTS 10
+#define PER 10
 dht_t *dhts[DHTS];
 
 state_t states[DHTS][PER];
@@ -135,7 +135,7 @@ find(const uint8_t key[DHT_HASH_SIZE], void **data) {
       *data = calloc(1, sizeof(i));
       int *j = *data;
       *j = i;
-      return (double)rand() / RAND_MAX > 0.3 ? sizeof(i) : -1;
+      return (double)rand() / RAND_MAX > 0.7 ? sizeof(i) : -1;
     }
   }
   return -1;
@@ -180,7 +180,8 @@ test_full_network() {
     if(complete) break;
   }
 
-  for(size_t i = 0; i < sizeof(dhts) / sizeof(dhts[0]); i++) {
+  for(int i = 0; i < DHTS; i++) {
+    printf("# dht[%i] peers: %i\n", i, dhts[i]->bucket->length);
     dht_close(dhts[i]);
   }
 }
