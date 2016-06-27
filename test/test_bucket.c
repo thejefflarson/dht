@@ -46,28 +46,9 @@ test_bucket_insert(){
   ok(ins > 80, "majority of nodes inserted");
 }
 
-static void
-test_bucket_update(){
-  uint8_t a[DHT_HASH_SIZE] = {0xFF};
-  bucket_t *bucket = bucket_new(a);
-  struct sockaddr_storage st = {0};
-  int j = 0;
-  uint8_t buf[DHT_HASH_SIZE];
-  randombytes(buf, DHT_HASH_SIZE);
-  node_t *node = node_new(buf, &st);
-  bucket_insert(bucket, node);
-  node->last_heard = 0;
-  bucket_update(bucket);
-  bucket_walk(&j, bucket, _walker);
-  ok(j == 1, "old nodes should not be removed if bucket is not full");
-  // TODO: test full bucket removal
-  bucket_free(bucket);
-}
-
 int
 main(){
   start_test;
   test_bucket();
   test_bucket_insert();
-  test_bucket_update();
 }

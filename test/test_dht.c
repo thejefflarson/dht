@@ -1,6 +1,7 @@
 #include "../dht.c"
 #include "tap.h"
 #include <arpa/inet.h>
+#include <assert.h>
 
 static void
 test_init(){
@@ -26,7 +27,7 @@ lookup(const uint8_t skey[DHT_HASH_SIZE], void **sdata) {
 }
 
 static int
-store(const uint8_t skey[DHT_HASH_SIZE], const void *sdata, const size_t length){
+store(const uint8_t skey[DHT_HASH_SIZE], const void *sdata, const size_t length) {
   ok(length == sizeof(data), "length matches in store");
   ok(memcmp(sdata, data, length) == 0, "length matches in store");
   ok(crypto_verify_32(skey, key) == 0, "key matches in store");
@@ -91,15 +92,22 @@ typedef struct {
   bool have;
 } state_t;
 
-#define DHTS 5
-#define PER 5
+#define DHTS 30
+#define PER 30
 dht_t *dhts[DHTS];
 
-state_t states[DHTS][PER] = {0};
+state_t states[DHTS][PER];
 
 void
 got(void *closure, uint8_t key[DHT_HASH_SIZE], uint8_t *data, size_t length) {
-
+  (void) closure, (void) key, (void) length;
+  printf("# Got %i !\n", (int) *data);
+  size_t num = *(size_t *)data;
+  for(int i = 0; i < DHTS; i++) {
+    if(!states[i][num].have) {
+      states[i][num].have = true;
+    }
+  }
 }
 
 void
@@ -111,12 +119,26 @@ failed(void *closure) {
 
 int
 set(const uint8_t key[DHT_HASH_SIZE], const void *data, const size_t length) {
-
+  printf("# set %i!\n", *(int*) data);
+  (void) key, (void) length;
+  return 0;
 }
 
 ssize_t
 find(const uint8_t key[DHT_HASH_SIZE], void **data) {
+  uint8_t h[DHT_HASH_SIZE] = {0};
+  int i;
 
+  for(i = 0; i < PER; i++) {
+    int ret = blake2(h, &i, NULL, DHT_HASH_SIZE, sizeof(i), 0);
+    if(ret == 0 && crypto_verify_32(h, key) == 0) {
+      *data = calloc(1, sizeof(i));
+      int *j = *data;
+      *j = i;
+      return sizeof(i);
+    }
+  }
+  return -1;
 }
 
 static void
@@ -125,6 +147,14 @@ test_full_network() {
     dhts[i] = dht_new(10000 + i);
     dht_set_storage(dhts[i], set, find);
     ok(dhts[i], "couldn't allocate a dht");
+    if(i > 0) {
+      struct sockaddr_storage addr = {0};
+      socklen_t slen = sizeof(addr);
+      int ret = getsockname(dhts[i-1]->socket,(struct sockaddr *)&addr, &slen);
+      ok(ret == 0, "parsed address correctly");
+      dht_add_node(dhts[i], dhts[i-1]->id, &addr);
+    }
+    dht_set_storage(dhts[i], set, find);
   }
 
   for(int i = 0; i < DHTS; i++) {
@@ -132,13 +162,14 @@ test_full_network() {
       states[i][j].value = j;
       int ret = blake2(states[i][j].hash, &j, NULL, DHT_HASH_SIZE, sizeof(j), 0);
       if(i == j) states[DHTS][PER].have = true;
-      ok(ret != -1, "Couldn't hash the value");
+      assert(ret != -1);
     }
   }
 
   while(1) {
     bool complete = true;
     for(int i = 0; i < DHTS; i++) {
+      dht_run(dhts[i], 100);
       for(int j = 0; j < PER; j++) {
         complete = complete && states[i][j].have;
         if(!states[i][j].have) {
@@ -152,10 +183,9 @@ test_full_network() {
   for(size_t i = 0; i < sizeof(dhts) / sizeof(dhts[0]); i++) {
     dht_close(dhts[i]);
   }
-  #undef DHTS
-  #undef PER
 }
-
+#undef DHTS
+#undef PER
 int
 main(){
   start_test;
