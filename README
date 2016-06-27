@@ -1,1 +1,9 @@
-WIP
+*
+ \
+  *---*
+  |
+  *
+
+Small DHT implementation. You can look in dht.h for the api.
+
+(Someday I'll add encryption but for now traffic is unencrypted)
