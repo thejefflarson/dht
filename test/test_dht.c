@@ -92,8 +92,8 @@ typedef struct {
   bool have;
 } state_t;
 
-#define DHTS 30
-#define PER 30
+#define DHTS 25
+#define PER 25
 dht_t *dhts[DHTS];
 
 state_t states[DHTS][PER];
@@ -135,7 +135,7 @@ find(const uint8_t key[DHT_HASH_SIZE], void **data) {
       *data = calloc(1, sizeof(i));
       int *j = *data;
       *j = i;
-      return sizeof(i);
+      return (double)rand() / RAND_MAX > 0.3 ? sizeof(i) : -1;
     }
   }
   return -1;
