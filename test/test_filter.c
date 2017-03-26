@@ -23,10 +23,11 @@ test_filter() {
   for(int i = 0; i < 100; i++) {
     randombytes(hash, DHT_HASH_SIZE);
     filter_add(filter, hash);
+    ok(filter_includes(filter, hash), "filter has key.");
   }
 
   float fp = 0;
-  for(int i = 0; i < 10000; i++) {
+  for(int i = 100; i < 10000; i++) {
     randombytes(hash, DHT_HASH_SIZE);
     if(filter_includes(filter, hash))
       fp++;
