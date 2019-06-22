@@ -59,13 +59,13 @@ test_set_get() {
 
   struct sockaddr_storage addr = {0};
   socklen_t slen = sizeof(addr);
-  ret = getsockname(dht2->socket,(struct sockaddr *)&addr, &slen);
+  ret = getsockname(dht2->socket, (struct sockaddr *)&addr, &slen);
   ok(ret == 0, "parsed address correctly");
   dht_add_node(dht, dht2->id, &addr);
   dht_set_storage(dht2, store, lookup);
   ret = dht_set(dht, data, sizeof(data), success, error, NULL);
   if(ret == -1) {
-    printf("%s\n", strerror(errno));
+    printf("%s, %s: %i\n", strerror(errno), __FILE__, __LINE__);
     fflush(stdout);
   }
   ok(ret >= 0, "sent a set request");
@@ -146,7 +146,7 @@ test_full_network() {
   for(size_t i = 0; i < DHTS; i++) {
     dhts[i] = dht_new(10000 + i);
     dht_set_storage(dhts[i], set, find);
-    ok(dhts[i], "couldn't allocate a dht");
+    ok(dhts[i], "allocate a dht");
     if(i > 0) {
       struct sockaddr_storage addr = {0};
       socklen_t slen = sizeof(addr);
@@ -161,7 +161,7 @@ test_full_network() {
     for(int j = 0; j < PER; j++) {
       states[i][j].value = j;
       int ret = blake2(states[i][j].hash, &j, NULL, DHT_HASH_SIZE, sizeof(j), 0);
-      if(i == j) states[DHTS][PER].have = true;
+      if(i == j) states[DHTS - 1][PER - 1].have = true;
       assert(ret != -1);
     }
   }

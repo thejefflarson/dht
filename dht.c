@@ -407,12 +407,17 @@ dht_new(int port) {
   char cport[6] = {0};
   snprintf(cport, 6, "%i", port);
   int error = getaddrinfo(NULL, cport, &hints, &res);
-  if(error != 0) {
+  if (error != 0) {
     errno = error;
     goto cleanup;
   }
 
-  dht->socket = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+  for (struct addrinfo *r = res; r; r = res->ai_next) {
+    dht->socket = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+    if(dht->socket == -1) continue;
+    break;
+  }
+
   if(dht->socket == -1) {
     goto cleanup;
   }
