@@ -48,6 +48,28 @@ error(void *closure) {
   err++;
 }
 
+
+char *
+get_ip_str(const struct sockaddr *sa, char *s, size_t maxlen) {
+  switch(sa->sa_family) {
+  case AF_INET:
+    inet_ntop(AF_INET, &(((struct sockaddr_in *)sa)->sin_addr),
+              s, maxlen);
+    break;
+
+  case AF_INET6:
+    inet_ntop(AF_INET6, &(((struct sockaddr_in6 *)sa)->sin6_addr),
+              s, maxlen);
+    break;
+
+  default:
+    strncpy(s, "Unknown AF", maxlen);
+    return NULL;
+  }
+
+  return s;
+}
+
 static void
 test_set_get() {
   dht_t *dht  = dht_new(9999);
@@ -59,8 +81,19 @@ test_set_get() {
 
   struct sockaddr_storage addr = {0};
   socklen_t slen = sizeof(addr);
+  struct addrinfo hints = {
+    .ai_family = AF_UNSPEC,
+    .ai_socktype = SOCK_DGRAM,
+    .ai_protocol = IPPROTO_UDP,
+    .ai_flags = AI_PASSIVE
+  };
   ret = getsockname(dht2->socket, (struct sockaddr *)&addr, &slen);
+  char ip[10000] = {0};
+  struct addrinfo *r;
+  get_ip_str((struct sockaddr *) &addr, ip, 10000);
+  ret = getaddrinfo(ip, "10001", &hints, &r);
   ok(ret == 0, "parsed address correctly");
+  memcpy(&addr, r->ai_addr, r->ai_addrlen);
   dht_add_node(dht, dht2->id, &addr);
   dht_set_storage(dht2, store, lookup);
   ret = dht_set(dht, data, sizeof(data), success, error, NULL);
@@ -150,7 +183,7 @@ test_full_network() {
     if(i > 0) {
       struct sockaddr_storage addr = {0};
       socklen_t slen = sizeof(addr);
-      int ret = getsockname(dhts[i-1]->socket,(struct sockaddr *)&addr, &slen);
+      int ret = getsockname(dhts[i-1]->socket, (struct sockaddr *)&addr, &slen);
       ok(ret == 0, "parsed address correctly");
       dht_add_node(dhts[i], dhts[i-1]->id, &addr);
     }
