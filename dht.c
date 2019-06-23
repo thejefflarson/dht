@@ -226,9 +226,18 @@ node_sort(const void* a, const void *b) {
 #pragma mark bucket
 
 static bool
-bucket_contains(bucket_t *root, node_t *node){
-  return memcmp(root->max, node->id, DHT_HASH_SIZE) > 0 &&
-        (root->next == NULL || memcmp(root->next->max, node->id, DHT_HASH_SIZE) <= 0);
+bucket_contains(bucket_t *root, uint8_t id[DHT_HASH_SIZE]){
+  return memcmp(root->max, id, DHT_HASH_SIZE) > 0 &&
+        (root->next == NULL || memcmp(root->next->max, id, DHT_HASH_SIZE) <= 0);
+}
+
+static bool
+bucket_includes(bucket_t *root, uint8_t id[DHT_HASH_SIZE]) {
+  for (int i = 0; i < root->length; i++) {
+    if (memcmp(root->nodes[i], id, DHT_HASH_SIZE) == 0)
+      return true;
+  }
+  return false;
 }
 
 static bool
@@ -264,7 +273,7 @@ bucket_new(uint8_t max[DHT_HASH_SIZE]) {
 }
 
 static bucket_t*
-bucket_insert(bucket_t *root, node_t *node);
+bucket_insert(bucket_t *root, node_t *node, uint8_t our_id[DHT_HASH_SIZE]);
 
 static bool
 bucket_split(bucket_t *root){
@@ -279,8 +288,8 @@ bucket_split(bucket_t *root){
   root->next = next;
 
   for(int i = 0; i < root->length; i++){
-    if(!bucket_contains(root, root->nodes[i])) {
-      if(bucket_insert(next, root->nodes[i])) {
+    if(!bucket_contains(root, root->nodes[i]->id)) {
+      if(bucket_insert(next, root->nodes[i], root->nodes[i]->id)) {
         if(i + 1 < root->length)
           memmove(root->nodes + i, root->nodes + i + 1, sizeof(node_t *) * (root->length - i - 1));
         i--;
@@ -293,21 +302,25 @@ bucket_split(bucket_t *root){
 }
 
 static bucket_t*
-bucket_insert(bucket_t *root, node_t *node) {
-  while(root != NULL && !bucket_contains(root, node))
+bucket_insert(bucket_t *root, node_t *node, uint8_t our_id[DHT_HASH_SIZE]) {
+  while (root != NULL && !bucket_contains(root, node->id))
     root = root->next;
 
-  if(root == NULL){
-    return NULL; // shouldn't happen
+  if (root == NULL){
+    return NULL;
   }
 
-  if(!bucket_has_space(root)) {
+  if (bucket_includes(root, node->id)) {
+    return NULL;
+  }
+  // We want to be experts in our own neighborhood so we check to see if we're close
+  if (!bucket_has_space(root)) {
     bool err = bucket_split(root);
     if(err) return NULL;
   }
 
   // have to check again to see if some nodes moved over
-  if(bucket_has_space(root)) {
+  if (bucket_has_space(root)) {
     root->nodes[root->length++] = node;
   } else {
     return NULL;
@@ -348,9 +361,9 @@ find_walker(void *ctx, bucket_t *root){
       if(memcmp(adelta, bdelta, DHT_HASH_SIZE) < 0) {
         if(state->closest_len < 8) {
           state->closest_len++;
+          memmove(state->closest + j + 1, state->closest + j, sizeof(node_t*) * (state->closest_len - j - 1));
         }
 
-        memmove(state->closest + j + 1, state->closest + j, sizeof(node_t*) * (state->closest_len - j - 1));
         state->closest[j] = root->nodes[i];
         break;
       }
@@ -391,7 +404,8 @@ dht_t *
 dht_new(int port) {
   dht_t *dht = calloc(1, sizeof(dht_t));
   if(!dht) return NULL;
-  uint8_t key[DHT_HASH_SIZE] = {0xFF};
+  uint8_t key[DHT_HASH_SIZE];
+  memset(key, 0xFF, sizeof(key));
   dht->bucket = bucket_new(key);
   if(dht->bucket == NULL) {
     goto error;
@@ -495,7 +509,7 @@ int
 dht_add_node(dht_t *dht, uint8_t key[], struct sockaddr_storage *addr) {
   node_t *node = node_new(key, addr);
   if(!node) return -1;
-  bucket_t *ret = bucket_insert(dht->bucket, node);
+  bucket_t *ret = bucket_insert(dht->bucket, node, dht->id);
   if(!ret) {
     node_free(node);
     return -1;
@@ -596,7 +610,7 @@ insert_from_ip(dht_t *dht, const ip_t *ip) {
       return;
   }
   node_t *node = node_new(ip->id, &address);
-  bucket_insert(dht->bucket, node);
+  bucket_insert(dht->bucket, node, dht->id);
 }
 
 #define MAX_SIZE 1500
@@ -665,11 +679,12 @@ bucket_ping_walker(void *ctx, bucket_t *root) {
       ping_t *ping = calloc(1, sizeof(ping_t));
       if(ping == NULL) continue;
       search_t *search = get_search(dht, node->id, NULL, remove_node, root);
-      if(search == NULL) {free(ping); continue; }
+      if(search == NULL) { free(ping); continue; }
       request_t req = { .type = 'p' };
       memcpy(req.id, dht->id, DHT_HASH_SIZE);
       req.token = search->token;
       compress_and_send(dht, ping->node, (uint8_t *)&req, sizeof(req));
+      break; // found one
     }
   }
   return 0;
@@ -746,7 +761,7 @@ dht_run(dht_t *dht, int timeout) {
   if(node == NULL || memcmp(node->id, request->id, DHT_HASH_SIZE) != 0) {
     node = node_new(request->id, &addr);
     if(node == NULL) goto cleanup;
-    bucket_insert(dht->bucket, node);
+    bucket_insert(dht->bucket, node, dht->id);
   }
 
   //if(memcmp(&node->address, &addr, sizeof(addr)) != 0) return -1; // TOFU

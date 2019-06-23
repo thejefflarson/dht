@@ -48,7 +48,6 @@ error(void *closure) {
   err++;
 }
 
-
 char *
 get_ip_str(const struct sockaddr *sa, char *s, size_t maxlen) {
   switch(sa->sa_family) {
@@ -91,7 +90,13 @@ test_set_get() {
   char ip[10000] = {0};
   struct addrinfo *r;
   get_ip_str((struct sockaddr *) &addr, ip, 10000);
+
+  printf("%s\n", ip);
   ret = getaddrinfo(ip, "10001", &hints, &r);
+  if(ret != 0) {
+    printf("%s, %s: %i\n", gai_strerror(ret), __FILE__, __LINE__);
+    fflush(stdout);
+  }
   ok(ret == 0, "parsed address correctly");
   memcpy(&addr, r->ai_addr, r->ai_addrlen);
   dht_add_node(dht, dht2->id, &addr);
@@ -126,7 +131,7 @@ typedef struct {
 } state_t;
 
 #define DHTS 20
-#define PER 20
+#define PER 40
 dht_t *dhts[DHTS];
 
 state_t states[DHTS][PER];
@@ -214,7 +219,11 @@ test_full_network() {
   }
 
   for(int i = 0; i < DHTS; i++) {
-    printf("# dht[%i] peers: %i\n", i, dhts[i]->bucket->length);
+    int sum = 0;
+    for (bucket_t *root = dhts[i]->bucket; root; root = root->next) {
+      sum += root->length;
+    }
+    printf("# dht[%i] peers: %i\n", i, sum);
     dht_close(dhts[i]);
   }
 }
