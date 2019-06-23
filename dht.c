@@ -227,14 +227,20 @@ node_sort(const void* a, const void *b) {
 
 static bool
 bucket_contains(bucket_t *root, uint8_t id[DHT_HASH_SIZE]){
-  return memcmp(root->max, id, DHT_HASH_SIZE) > 0 &&
-        (root->next == NULL || memcmp(root->next->max, id, DHT_HASH_SIZE) <= 0);
+  if (memcmp(root->max, id, DHT_HASH_SIZE) >= 0) {
+    // if we're the last bucket and so the next one would be zero, so we return
+    if (root->next == NULL) return true;
+    // if not check to see if were greater than the next
+    if (memcmp(root->next->max, id, DHT_HASH_SIZE) < 0) return true;
+  }
+  // otherwise we're not in this bucket
+  return false;
 }
 
 static bool
 bucket_includes(bucket_t *root, uint8_t id[DHT_HASH_SIZE]) {
   for (int i = 0; i < root->length; i++) {
-    if (memcmp(root->nodes[i], id, DHT_HASH_SIZE) == 0)
+    if (memcmp(root->nodes[i]->id, id, DHT_HASH_SIZE) == 0)
       return true;
   }
   return false;
@@ -303,7 +309,11 @@ bucket_split(bucket_t *root){
 
 static bucket_t*
 bucket_insert(bucket_t *root, node_t *node, uint8_t our_id[DHT_HASH_SIZE]) {
-  while (root != NULL && !bucket_contains(root, node->id))
+  // We want to be experts in our own neighborhood so we check to see if the new node is in our
+  // bucket
+  while (root != NULL &&
+         !bucket_contains(root, our_id) &&
+         !bucket_contains(root, node->id))
     root = root->next;
 
   if (root == NULL){
@@ -313,7 +323,7 @@ bucket_insert(bucket_t *root, node_t *node, uint8_t our_id[DHT_HASH_SIZE]) {
   if (bucket_includes(root, node->id)) {
     return NULL;
   }
-  // We want to be experts in our own neighborhood so we check to see if we're close
+
   if (!bucket_has_space(root)) {
     bool err = bucket_split(root);
     if(err) return NULL;

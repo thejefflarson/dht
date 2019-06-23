@@ -20,13 +20,15 @@ _walker(void *ctx, bucket_t *root){
 static void
 test_bucket_insert(){
   uint8_t a[DHT_HASH_SIZE] = {0xFF};
+  //memset(a, 0xFF, sizeof(a));
   bucket_t *bucket = bucket_new(a);
   randombytes(a, DHT_HASH_SIZE);
   ok(bucket != NULL, "bucket is not null");
+  ok(bucket_contains(bucket, a), "bucket contains a");
   int ins = 0;
   struct sockaddr_storage st = {0};
   node_t *node;
-  for(int i = 0; i < 100; i++){
+  for(int i = 0; i < 1000; i++){
     uint8_t buf[DHT_HASH_SIZE];
     randombytes(buf, DHT_HASH_SIZE);
     node = node_new(buf, &st);
@@ -38,8 +40,9 @@ test_bucket_insert(){
     }
   }
   node_t *nodes[8];
-  for (bucket_t *root = bucket; root && root->length > 0; root = root->next)
+  for (bucket_t *root = bucket; root && root->length > 0; root = root->next) {
     node = root->nodes[0];
+  }
   find_nodes(nodes, bucket, node->id);
   ok(nodes[0] == node, "found the right node");
   int j = 0;
@@ -47,7 +50,7 @@ test_bucket_insert(){
   bucket_free(bucket);
   ok(j == ins, "right number of nodes inserted");
   printf("# %i\n", ins);
-  ok(ins > 80, "majority of nodes inserted");
+  ok(ins > 500, "majority of nodes inserted");
 }
 
 int
