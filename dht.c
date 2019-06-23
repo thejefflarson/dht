@@ -530,11 +530,17 @@ dht_add_node(dht_t *dht, uint8_t key[], struct sockaddr_storage *addr) {
 int
 dht_get(dht_t *dht, uint8_t key[DHT_HASH_SIZE],
         dht_get_callback success, dht_failure_callback error, void *closure) {
-  node_t *node = find_node(dht, key);
-  if(!node) return -1;
-  search_t *to_search = get_search(dht, key, success, error, closure);
-  if(!to_search) return -1;
-  return send_get(dht, to_search, node);
+  node_t *nodes[8];
+
+  size_t found = find_nodes(nodes, dht->bucket, key);
+  if(!found) return -1;
+  for (int i = 0; i < found; i++) {
+    search_t *to_search = get_search(dht, key, success, error, closure);
+    if(!to_search) return -1;
+    send_get(dht, to_search, nodes[i]);
+  }
+
+  return 0;
 }
 
 int
@@ -543,23 +549,28 @@ dht_set(dht_t *dht, void *data, size_t len, dht_get_callback success,
   uint8_t key[DHT_HASH_SIZE] = {0};
   int ret = blake2(key, data, NULL, DHT_HASH_SIZE, len, 0);
   if(ret == -1) return ret;
-  node_t *node = find_node(dht, key);
-  if(!node) return -1;
-  search_t *to_search = get_search(dht, key, success, error, closure);
-  if(!to_search) return -1;
+  node_t *nodes[8];
+  size_t found = find_nodes(nodes, dht->bucket, key);
+  if(!found) return -1;
 
-  request_t set = { .type = 's' };
-  set.token = to_search->token;
-  memcpy(set.id, dht->id, DHT_HASH_SIZE);
+  for (int i = 0; i < found; i++) {
+    search_t *to_search = get_search(dht, key, success, error, closure);
+    if(!to_search) return -1;
 
-  uint8_t *buf = calloc(1, sizeof(set) + DHT_HASH_SIZE + len);
-  if(buf == NULL) return -1;
-  memcpy(buf, &set, sizeof(set));
-  memcpy(buf + sizeof(set), key, DHT_HASH_SIZE);
-  memcpy(buf + sizeof(set) + DHT_HASH_SIZE, data, len);
-  ret = compress_and_send(dht, node, buf, sizeof(set) + len + DHT_HASH_SIZE);
-  free(buf);
-  return ret;
+    request_t set = { .type = 's' };
+    set.token = to_search->token;
+    memcpy(set.id, dht->id, DHT_HASH_SIZE);
+
+    uint8_t *buf = calloc(1, sizeof(set) + DHT_HASH_SIZE + len);
+    if(buf == NULL) return -1;
+    memcpy(buf, &set, sizeof(set));
+    memcpy(buf + sizeof(set), key, DHT_HASH_SIZE);
+    memcpy(buf + sizeof(set) + DHT_HASH_SIZE, data, len);
+    ret = compress_and_send(dht, nodes[i], buf, sizeof(set) + len + DHT_HASH_SIZE);
+    free(buf);
+  }
+
+  return 0;
 }
 
 static ssize_t
